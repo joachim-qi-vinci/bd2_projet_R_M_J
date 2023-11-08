@@ -6,49 +6,59 @@ CREATE SCHEMA projet;
 CREATE TYPE etat_offre AS ENUM ('non-validée', 'validée', 'annulée', 'attribuée');
 CREATE TYPE etat_candidature AS ENUM ('en attente', 'acceptée', 'refusée', 'annulée');
 */
-CREATE TABLE projet.etudiants (
-                                  matricule_etudiant SERIAL PRIMARY KEY,
-                                  nom VARCHAR(40),
-                                  prenom VARCHAR(30),
-                                  mail VARCHAR(50),
-                                  semestre_stage semestre_de_stage,
-                                  mdp varchar(20),
-                                  nbr_candidatures_en_attente INTEGER
+CREATE TABLE projet.etudiants
+(
+    matricule_etudiant SERIAL PRIMARY KEY NOT NULL,
+    nom VARCHAR(40) NOT NULL,
+    prenom VARCHAR(30) NOT NULL,
+    mail VARCHAR(50) NOT NULL
+        CHECK ( mail SIMILAR TO '[a-z].[a-z]@student.vinci.be'),
+    semestre_stage semestre_de_stage NOT NULL
+        CHECK (etudiants.semestre_stage IN ('Q1', 'Q2')),
+    mdp VARCHAR(20) NOT NULL,
+    nbr_candidatures_en_attente INTEGER NOT NULL
 );
 
-CREATE TABLE projet.entreprises (
-                                    id_entreprise CHAR(3) PRIMARY KEY,
-                                    nom VARCHAR(40),
-                                    adresse VARCHAR(100),
-                                    mail VARCHAR(60),
-                                    mpd VARCHAR(20)
+CREATE TABLE projet.entreprises
+(
+    id_entreprise CHAR(3) PRIMARY KEY NOT NULL,
+    nom VARCHAR(40) NOT NULL,
+    adresse VARCHAR(100) NOT NULL,
+    mail VARCHAR(60) NOT NULL,
+    mpd VARCHAR(20) NOT NULL
 );
 
-CREATE TABLE projet.mots_cles (
-                                  id_mot_cle SERIAL PRIMARY KEY,
-                                  intitule VARCHAR(15)
+CREATE TABLE projet.mots_cles
+(
+    id_mot_cle SERIAL PRIMARY KEY NOT NULL,
+    intitule VARCHAR(15) NOT NULL
 );
 
-CREATE TABLE projet.offres_stage (
-    id_offre_stage SERIAL PRIMARY KEY,
-    entreprise CHAR(3) REFERENCES projet.entreprises(id_entreprise),
-    code_offre_stage VARCHAR(5),
-    description VARCHAR(200),
-    semestre semestre_de_stage,
-    etat etat_offre
+CREATE TABLE projet.offres_stage
+(
+    id_offre_stage SERIAL PRIMARY KEY NOT NULL,
+    entreprise CHAR(3) REFERENCES projet.entreprises(id_entreprise) NOT NULL,
+    code_offre_stage VARCHAR(5) NOT NULL
+        --CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}')
+    ,
+    description VARCHAR(200) NOT NULL,
+    semestre_offre semestre_de_stage NOT NULL
+        CHECK (semestre_offre IN ('Q1', 'Q2')),
+    etat etat_offre NOT NULL
 );
 
 CREATE TABLE projet.candidatures
 (
-    etudiant    INTEGER REFERENCES projet.etudiants (matricule_etudiant),
-    offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage),
-    motivation VARCHAR(200),
-    etat etat_candidature,
+    etudiant    INTEGER REFERENCES projet.etudiants (matricule_etudiant) NOT NULL,
+    offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage) NOT NULL,
+    motivation VARCHAR(200) NOT NULL,
+    etat etat_candidature NOT NULL,
     PRIMARY KEY (etudiant, offre_stage)
 );
 
-CREATE TABLE mots_cles_offre_stage (
-    offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage),
-    mot_cle INTEGER REFERENCES projet.mots_cles(id_mot_cle),
+CREATE TABLE mots_cles_offre_stage
+(
+    offre_stage INTEGER REFERENCES projet.offres_stage (id_offre_stage) NOT NULL,
+    mot_cle     INTEGER REFERENCES projet.mots_cles (id_mot_cle) NOT NULL,
     PRIMARY KEY (offre_stage, mot_cle)
 );
