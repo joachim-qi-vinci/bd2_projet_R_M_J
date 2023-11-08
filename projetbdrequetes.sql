@@ -43,5 +43,12 @@ CREATE TABLE projet.candidatures
     etudiant    INTEGER REFERENCES projet.etudiants (matricule_etudiant),
     offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage),
     motivation VARCHAR(200),
-    etat etat_candidature
+    etat etat_candidature,
+    PRIMARY KEY (etudiant, offre_stage)
+);
+
+CREATE TABLE mots_cles_offre_stage (
+    offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage),
+    mot_cle INTEGER REFERENCES projet.mots_cles(id_mot_cle),
+    PRIMARY KEY (offre_stage, mot_cle)
 );
