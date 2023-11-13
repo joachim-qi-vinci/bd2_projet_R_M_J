@@ -48,7 +48,7 @@ CREATE TABLE projet.offres_stage
     description VARCHAR(200) NOT NULL,
     semestre_offre semestre_de_stage NOT NULL
         CHECK (semestre_offre IN ('Q1', 'Q2')),
-    etat etat_offre NOT NULL
+    etat etat_offre NOT NULL DEFAULT 'non-validée'
 );
 
 CREATE TABLE projet.candidatures
@@ -66,6 +66,28 @@ CREATE TABLE projet.mots_cles_offre_stage
     mot_cle     INTEGER REFERENCES projet.mots_cles (id_mot_cle) NOT NULL,
     PRIMARY KEY (offre_stage, mot_cle)
 );
+
+--INSERT INTO MOTS-CLES
+INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
+INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
+INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
+INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
+INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
+
+--INSERT INTO ENTREPRISES
+INSERT INTO projet.entreprises VALUES ('APP','Apple', 'Siège Social d''Apple', 'apple@icloud.be', '1234');
+INSERT INTO projet.entreprises VALUES ('SAM','Samsung', 'Siège Social de Samsung', 'samsung@outlook.com', '1234');
+INSERT INTO projet.entreprises VALUES ('MIC', 'Microsoft', 'Siège Social de Microsoft', 'microsoft@outlook.com', '1234');
+INSERT INTO projet.entreprises VALUES ('HUA', 'HUAWEI', 'Siège Social d''Huawei', 'huawei@chinaSupremacy.com', '1234');
+INSERT INTO projet.entreprises VALUES ('SON', 'SONY', 'Siège Social de Sony', 'sony@gmail.com', '1234');
+
+--INSERT INTO OFFRE_STAGE
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('APP', 'APP1', 'Petit stage sympathique chez Apple', 'Q1');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('APP', 'APP2', 'Petit stage sympathique chez Apple', 'Q2');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('MIC', 'MIC1', 'Petit stage sympathique chez Microsoft','Q1');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('HUA','HUA1','Gros stage de haut niveau chez les chinois','Q1');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('SAM', 'SAM1', 'Petit stage sympathique chez Samsung', 'Q2');
+
 
 -- L’encodage échouera si le mot clé est déjà présent
 CREATE OR REPLACE FUNCTION projet.trigger() RETURNS TRIGGER AS $$
@@ -93,6 +115,6 @@ CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
 SELECT os.id_offre_stage, os.code_offre_stage AS code_de_stage, os.semestre_offre AS semestre, e.nom AS entreprise, os.description
 FROM projet.offres_stage os, projet.entreprises e
 WHERE os.entreprise = e.id_entreprise AND os.etat = 'non-validée'
-ORDER BY semestre_offre;
+ORDER BY semestre_offre, e.id_entreprise;
 
 
