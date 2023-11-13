@@ -85,3 +85,14 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
     FOR EACH ROW EXECUTE FUNCTION projet.trigger();
 
+
+
+-- Voir les offres de stage dans l’état « non validée ». Pour chaque offre, on affichera son
+-- code, son semestre, le nom de l’entreprise et sa description
+
+SELECT os.id_offre_stage, os.code_offre_stage AS code_de_stage, os.semestre_offre AS semestre, e.nom AS entreprise, os.description
+FROM projet.offres_stage os, projet.entreprises e
+WHERE os.entreprise = e.id_entreprise AND os.etat = 'non-validée'
+ORDER BY semestre_offre;
+
+
