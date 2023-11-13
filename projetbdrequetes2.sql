@@ -66,3 +66,22 @@ CREATE TABLE projet.mots_cles_offre_stage
     mot_cle     INTEGER REFERENCES projet.mots_cles (id_mot_cle) NOT NULL,
     PRIMARY KEY (offre_stage, mot_cle)
 );
+
+-- L’encodage échouera si le mot clé est déjà présent
+CREATE OR REPLACE FUNCTION projet.trigger() RETURNS TRIGGER AS $$
+BEGIN
+    -- Vérifier si le mot-clé existe déjà
+    IF EXISTS(SELECT * FROM projet.mots_cles mc
+               WHERE mc.intitule = NEW.intitule) THEN
+        -- Lever une exception si le mot-clé existe déjà
+        RAISE EXCEPTION 'Ce mot-clé existe déjà';
+    END IF;
+
+    -- Si le mot-clé n'existe pas, l'insertion est autorisée
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
+    FOR EACH ROW EXECUTE FUNCTION projet.trigger();
+
