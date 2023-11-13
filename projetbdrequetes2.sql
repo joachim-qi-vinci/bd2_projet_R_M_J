@@ -1,16 +1,19 @@
 DROP SCHEMA IF EXISTS projet CASCADE;
+DROP TYPE IF EXISTS semestre_de_stage;
+DROP TYPE IF EXISTS etat_offre;
+DROP TYPE IF EXISTS etat_candidature;
+
 CREATE SCHEMA projet;
-
-
-/*CREATE TYPE semestre_de_stage AS ENUM ('Q1', 'Q2');
+CREATE TYPE semestre_de_stage AS ENUM ('Q1', 'Q2');
 CREATE TYPE etat_offre AS ENUM ('non-validée', 'validée', 'annulée', 'attribuée');
 CREATE TYPE etat_candidature AS ENUM ('en attente', 'acceptée', 'refusée', 'annulée');
-*/
+
+
 CREATE TABLE projet.etudiants
 (
     matricule_etudiant SERIAL PRIMARY KEY NOT NULL,
     nom VARCHAR(40) NOT NULL,
-    prenom VARCHAR(30) NOT NULL,
+    prenom VARCHAR(40) NOT NULL,
     mail VARCHAR(50) NOT NULL
         CHECK ( mail SIMILAR TO '[a-z].[a-z]@student.vinci.be'),
     semestre_stage semestre_de_stage NOT NULL
@@ -21,7 +24,8 @@ CREATE TABLE projet.etudiants
 
 CREATE TABLE projet.entreprises
 (
-    id_entreprise CHAR(3) PRIMARY KEY NOT NULL,
+    id_entreprise CHAR(3) PRIMARY KEY NOT NULL
+        CHECK ( id_entreprise SIMILAR TO '[A-Z]{3}'),
     nom VARCHAR(40) NOT NULL,
     adresse VARCHAR(100) NOT NULL,
     mail VARCHAR(60) NOT NULL,
@@ -39,7 +43,7 @@ CREATE TABLE projet.offres_stage
     id_offre_stage SERIAL PRIMARY KEY NOT NULL,
     entreprise CHAR(3) REFERENCES projet.entreprises(id_entreprise) NOT NULL,
     code_offre_stage VARCHAR(5) NOT NULL
-        --CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}')
+        CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}[0-9]')
     ,
     description VARCHAR(200) NOT NULL,
     semestre_offre semestre_de_stage NOT NULL
@@ -56,7 +60,7 @@ CREATE TABLE projet.candidatures
     PRIMARY KEY (etudiant, offre_stage)
 );
 
-CREATE TABLE mots_cles_offre_stage
+CREATE TABLE projet.mots_cles_offre_stage
 (
     offre_stage INTEGER REFERENCES projet.offres_stage (id_offre_stage) NOT NULL,
     mot_cle     INTEGER REFERENCES projet.mots_cles (id_mot_cle) NOT NULL,
