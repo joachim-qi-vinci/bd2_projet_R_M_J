@@ -108,12 +108,11 @@ INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
 --stage (Q1 ou Q2). Il choisira également un mot de passe pour l’étudiant. Ce mot de
 --passe sera communiqué à l’étudiant par mail.
 
-
 CREATE OR REPLACE FUNCTION projet.trigger() RETURNS TRIGGER AS $$
 BEGIN
     IF EXISTS(SELECT * FROM projet.etudiants e
               WHERE e.nom = NEW.nom AND e.prenom = NEW.prenom )
-    THEN RAISE 'Etudiant ${e.nom} ${e.prenom} est déjà encodé';
+    THEN RAISE 'Etudiant déjà encodé';
     END IF;
     RETURN NEW;
 END;
@@ -131,11 +130,38 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+--APP PROFESSEUR 2.
+--Encoder une entreprise : le professeur devra encoder le nom de l’entreprise, son
+--adresse (une seule chaîne de caractère) et son adresse mail. Il choisira pour l’entreprise
+--un identifiant composé de 3 lettres majuscules (par exemple « VIN » pour l’entreprise
+--Vinci). Il choisira également un mot de passe pour l’entreprise. Ce mot de passe sera
+--communiqué à l’entreprise par mail.
 
+CREATE OR REPLACE FUNCTION projet.trigger1() RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS(SELECT * FROM projet.entreprises et
+              WHERE et.nom = NEW.nom AND et.mail = NEW.mail AND et.adresse = NEW.adresse )
+    THEN RAISE 'Entreprise déjà encodée';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_ajout_entreprise BEFORE INSERT ON projet.entreprises
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger1();
+
+CREATE OR REPLACE FUNCTION projet.encoderEntreprise(nom_entreprise VARCHAR(40), adresse_entreprise VARCHAR(100), mail_entreprise VARCHAR(60),
+                                                    identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(20)) RETURNS VOID AS $$
+DECLARE
+BEGIN
+    INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mpd)
+    VALUES (identifiant_entreprise, nom_entreprise, adresse_entreprise, mail_entreprise, mdp_entreprise);
+END;
+$$ LANGUAGE plpgsql;
 
 --APP PROFESSEUR 3.
 -- L’encodage échouera si le mot clé est déjà présent
-CREATE OR REPLACE FUNCTION projet.trigger1() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION projet.trigger2() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si le mot-clé existe déjà
     IF EXISTS(SELECT * FROM projet.mots_cles mc
@@ -150,7 +176,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
-    FOR EACH ROW EXECUTE PROCEDURE projet.trigger1();
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger2();
 
 
 -- APP PROFESSEUR 4.
@@ -164,7 +190,7 @@ ORDER BY semestre_offre, e.id_entreprise;
 --Valider une offre de stage en donnant son code. On ne pourra valider que des offres
 --de stages « non validée ».
 
-CREATE OR REPLACE FUNCTION projet.trigger2() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION projet.trigger3() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si l'offre de stage est à l'état "non validée"
     IF NOT EXISTS(SELECT * FROM projet.offres_stage os
@@ -178,7 +204,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_valider_offre_stage BEFORE UPDATE ON projet.offres_stage
-    FOR EACH ROW EXECUTE PROCEDURE projet.trigger2();
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger3();
 
 CREATE OR REPLACE FUNCTION projet.validerOffreDeStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
 DECLARE
