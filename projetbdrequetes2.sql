@@ -9,8 +9,8 @@ CREATE TYPE projet.etat_candidature AS ENUM ('en attente', 'acceptée', 'refusé
 CREATE TABLE projet.etudiants
 (
     matricule_etudiant SERIAL PRIMARY KEY NOT NULL,
-    nom VARCHAR(40) NOT NULL,
-    prenom VARCHAR(40) NOT NULL,
+    nom VARCHAR(40) NOT NULL CHECK (nom <> ''),
+    prenom VARCHAR(40) NOT NULL CHECK (prenom <> ''),
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL
@@ -23,16 +23,16 @@ CREATE TABLE projet.entreprises
 (
     id_entreprise CHAR(3) PRIMARY KEY NOT NULL
         CHECK ( id_entreprise SIMILAR TO '[A-Z]{3}'),
-    nom VARCHAR(40) NOT NULL,
-    adresse VARCHAR(100) NOT NULL,
-    mail VARCHAR(60) NOT NULL,
+    nom VARCHAR(40) NOT NULL CHECK (nom <> ''),
+    adresse VARCHAR(100) NOT NULL CHECK (adresse <> ''),
+    mail VARCHAR(60) NOT NULL CHECK ( mail SIMILAR TO '[a-z]+@[a-z]+\.[a-z]+'),
     mpd VARCHAR(20) NOT NULL
 );
 
 CREATE TABLE projet.mots_cles
 (
     id_mot_cle SERIAL PRIMARY KEY NOT NULL,
-    intitule VARCHAR(15) NOT NULL
+    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '')
 );
 
 CREATE TABLE projet.offres_stage
@@ -42,7 +42,7 @@ CREATE TABLE projet.offres_stage
     code_offre_stage VARCHAR(5) NOT NULL
         CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}[0-9]')
     ,
-    description VARCHAR(200) NOT NULL,
+    description VARCHAR(200) NOT NULL CHECK (description <> ''),
     semestre_offre projet.semestre_de_stage NOT NULL
         CHECK (semestre_offre IN ('Q1', 'Q2')),
     etat projet.etat_offre NOT NULL DEFAULT 'non-validée'
