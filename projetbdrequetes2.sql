@@ -9,8 +9,10 @@ CREATE TYPE projet.etat_candidature AS ENUM ('en attente', 'acceptée', 'refusé
 CREATE TABLE projet.etudiants
 (
     matricule_etudiant SERIAL PRIMARY KEY NOT NULL,
-    nom VARCHAR(40) NOT NULL CHECK (nom <> ''),
-    prenom VARCHAR(40) NOT NULL CHECK (prenom <> ''),
+    nom VARCHAR(40) NOT NULL
+        CHECK (nom <> ''),
+    prenom VARCHAR(40) NOT NULL
+        CHECK (prenom <> ''),
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL
@@ -23,9 +25,12 @@ CREATE TABLE projet.entreprises
 (
     id_entreprise CHAR(3) PRIMARY KEY NOT NULL
         CHECK ( id_entreprise SIMILAR TO '[A-Z]{3}'),
-    nom VARCHAR(40) NOT NULL CHECK (nom <> ''),
-    adresse VARCHAR(100) NOT NULL CHECK (adresse <> ''),
-    mail VARCHAR(60) NOT NULL CHECK ( mail SIMILAR TO '[a-z]+@[a-z]+\.[a-z]+'),
+    nom VARCHAR(40) NOT NULL
+        CHECK (nom <> ''),
+    adresse VARCHAR(100) NOT NULL
+        CHECK (adresse <> ''),
+    mail VARCHAR(60) NOT NULL,
+        CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
     mpd VARCHAR(20) NOT NULL
 );
 
@@ -64,13 +69,11 @@ CREATE TABLE projet.mots_cles_offre_stage
     PRIMARY KEY (offre_stage, mot_cle)
 );
 
-
-
 --INSERT INTO ENTREPRISES
 INSERT INTO projet.entreprises VALUES ('APP','Apple', 'Siège Social d''Apple', 'apple@icloud.be', '1234');
 INSERT INTO projet.entreprises VALUES ('SAM','Samsung', 'Siège Social de Samsung', 'samsung@outlook.com', '1234');
 INSERT INTO projet.entreprises VALUES ('MIC', 'Microsoft', 'Siège Social de Microsoft', 'microsoft@outlook.com', '1234');
-INSERT INTO projet.entreprises VALUES ('HUA', 'HUAWEI', 'Siège Social d''Huawei', 'huawei@chinaSupremacy.com', '1234');
+INSERT INTO projet.entreprises VALUES ('HUA', 'HUAWEI', 'Siège Social d''Huawei', 'huawei@chinasupremacy.com', '1234');
 INSERT INTO projet.entreprises VALUES ('SON', 'SONY', 'Siège Social de Sony', 'sony@gmail.com', '1234');
 
 --INSERT INTO OFFRE_STAGE
@@ -90,9 +93,49 @@ INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 4,
 INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (3, 3, '420Bedave');
 INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (2, 2, 'Albanian Mafia');
 
+--INSERT INTO MOTS-CLES
+INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
+INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
+INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
+INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
+INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
 
--- L’encodage échouera si le mot clé est déjà présent
+
+
+--APP PROFESSEUR 1.
+--Encoder un étudiant : le professeur devra encoder son nom, son prénom, son adresse
+--mail (se terminant par @student.vinci.be) et le semestre pendant lequel il fera son
+--stage (Q1 ou Q2). Il choisira également un mot de passe pour l’étudiant. Ce mot de
+--passe sera communiqué à l’étudiant par mail.
+
+
 CREATE OR REPLACE FUNCTION projet.trigger() RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS(SELECT * FROM projet.etudiants e
+              WHERE e.nom = NEW.nom AND e.prenom = NEW.prenom )
+    THEN RAISE 'Etudiant ${e.nom} ${e.prenom} est déjà encodé';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_ajout_etudiant BEFORE INSERT ON projet.etudiants
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger();
+
+CREATE OR REPLACE FUNCTION projet.encoderEtudiant(nom_etudiant VARCHAR(40), prenom_etudiant VARCHAR(40), mail_etudiant VARCHAR(50),
+                                                  semestre_stage projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
+DECLARE
+BEGIN
+    INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES (nom_etudiant, prenom_etudiant, mail_etudiant, semestre_stage, mdp_etudiant);
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+--APP PROFESSEUR 3.
+-- L’encodage échouera si le mot clé est déjà présent
+CREATE OR REPLACE FUNCTION projet.trigger1() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si le mot-clé existe déjà
     IF EXISTS(SELECT * FROM projet.mots_cles mc
@@ -107,14 +150,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
-    FOR EACH ROW EXECUTE PROCEDURE projet.trigger();
-
---INSERT INTO MOTS-CLES
-INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
-INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
-INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
-INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
-INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger1();
 
 
 -- APP PROFESSEUR 4.
@@ -132,7 +168,7 @@ CREATE OR REPLACE FUNCTION projet.trigger2() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si l'offre de stage est à l'état "non validée"
     IF NOT EXISTS(SELECT * FROM projet.offres_stage os
-                WHERE os.code_offre_stage = NEW.code_offre_stage AND os.etat = 'non-validée')
+                  WHERE os.code_offre_stage = NEW.code_offre_stage AND os.etat = 'non-validée')
     THEN
         --Lève une exception si l'offre de stage est dans un autre état que "non-validée"
         RAISE 'Offre de stage plus dans l''état non validée';
@@ -142,7 +178,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_valider_offre_stage BEFORE UPDATE ON projet.offres_stage
-        FOR EACH ROW EXECUTE PROCEDURE projet.trigger2();
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger2();
 
 CREATE OR REPLACE FUNCTION projet.validerOffreDeStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
 DECLARE
@@ -154,7 +190,7 @@ $$ LANGUAGE plpgsql;
 
 --UPDATE OFFRE DE STAGE
 UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
-UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
+--UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
 
 
 --APP PROFESSEUR 6.
