@@ -64,12 +64,7 @@ CREATE TABLE projet.mots_cles_offre_stage
     PRIMARY KEY (offre_stage, mot_cle)
 );
 
---INSERT INTO MOTS-CLES
-INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
-INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
-INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
-INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
-INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
+
 
 --INSERT INTO ENTREPRISES
 INSERT INTO projet.entreprises VALUES ('APP','Apple', 'Siège Social d''Apple', 'apple@icloud.be', '1234');
@@ -112,8 +107,14 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
-    FOR EACH ROW EXECUTE FUNCTION projet.trigger();
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger();
 
+--INSERT INTO MOTS-CLES
+INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
+INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
+INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
+INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
+INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
 
 
 -- APP PROFESSEUR 4.
@@ -122,6 +123,39 @@ SELECT os.id_offre_stage, os.code_offre_stage AS code_de_stage, os.semestre_offr
 FROM projet.offres_stage os, projet.entreprises e
 WHERE os.entreprise = e.id_entreprise AND os.etat = 'non-validée'
 ORDER BY semestre_offre, e.id_entreprise;
+
+--APP PROFESSEUR 5.
+--Valider une offre de stage en donnant son code. On ne pourra valider que des offres
+--de stages « non validée ».
+
+CREATE OR REPLACE FUNCTION projet.trigger2() RETURNS TRIGGER AS $$
+BEGIN
+    -- Vérifier si l'offre de stage est à l'état "non validée"
+    IF NOT EXISTS(SELECT * FROM projet.offres_stage os
+                WHERE os.code_offre_stage = NEW.code_offre_stage AND os.etat = 'non-validée')
+    THEN
+        --Lève une exception si l'offre de stage est dans un autre état que "non-validée"
+        RAISE 'Offre de stage plus dans l''état non validée';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_valider_offre_stage BEFORE UPDATE ON projet.offres_stage
+        FOR EACH ROW EXECUTE PROCEDURE projet.trigger2();
+
+CREATE OR REPLACE FUNCTION projet.validerOffreDeStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
+DECLARE
+BEGIN
+
+    UPDATE projet.offres_stage  SET etat='validée' WHERE code_offre_stage = code_offre;
+END;
+$$ LANGUAGE plpgsql;
+
+--UPDATE OFFRE DE STAGE
+UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
+UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
+
 
 --APP PROFESSEUR 6.
 --Voir les offres de stage dans l’état « validée ». Même affichage qu’au point 4.
