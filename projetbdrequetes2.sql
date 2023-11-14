@@ -1,12 +1,9 @@
 DROP SCHEMA IF EXISTS projet CASCADE;
-DROP TYPE IF EXISTS semestre_de_stage;
-DROP TYPE IF EXISTS etat_offre;
-DROP TYPE IF EXISTS etat_candidature;
 
 CREATE SCHEMA projet;
-CREATE TYPE semestre_de_stage AS ENUM ('Q1', 'Q2');
-CREATE TYPE etat_offre AS ENUM ('non-validée', 'validée', 'annulée', 'attribuée');
-CREATE TYPE etat_candidature AS ENUM ('en attente', 'acceptée', 'refusée', 'annulée');
+CREATE TYPE projet.semestre_de_stage AS ENUM ('Q1', 'Q2');
+CREATE TYPE projet.etat_offre AS ENUM ('non-validée', 'validée', 'annulée', 'attribuée');
+CREATE TYPE projet.etat_candidature AS ENUM ('en attente', 'acceptée', 'refusée', 'annulée');
 
 
 CREATE TABLE projet.etudiants
@@ -16,7 +13,7 @@ CREATE TABLE projet.etudiants
     prenom VARCHAR(40) NOT NULL,
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
-    semestre_stage semestre_de_stage NOT NULL
+    semestre_stage projet.semestre_de_stage NOT NULL
         CHECK (etudiants.semestre_stage IN ('Q1', 'Q2')),
     mdp VARCHAR(20) NOT NULL,
     nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0
