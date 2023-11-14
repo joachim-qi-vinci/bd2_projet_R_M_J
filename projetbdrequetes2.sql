@@ -43,9 +43,9 @@ CREATE TABLE projet.offres_stage
         CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}[0-9]')
     ,
     description VARCHAR(200) NOT NULL,
-    semestre_offre semestre_de_stage NOT NULL
+    semestre_offre projet.semestre_de_stage NOT NULL
         CHECK (semestre_offre IN ('Q1', 'Q2')),
-    etat etat_offre NOT NULL DEFAULT 'non-validée'
+    etat projet.etat_offre NOT NULL DEFAULT 'non-validée'
 );
 
 CREATE TABLE projet.candidatures
@@ -53,7 +53,7 @@ CREATE TABLE projet.candidatures
     etudiant    INTEGER REFERENCES projet.etudiants (matricule_etudiant) NOT NULL,
     offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage) NOT NULL,
     motivation VARCHAR(200) NOT NULL,
-    etat etat_candidature NOT NULL DEFAULT 'en attente',
+    etat projet.etat_candidature NOT NULL DEFAULT 'en attente',
     PRIMARY KEY (etudiant, offre_stage)
 );
 
