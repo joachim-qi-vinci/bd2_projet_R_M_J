@@ -236,3 +236,14 @@ SELECT et.nom, et.prenom, et.mail, et.semestre_stage, COUNT(c.*)
 FROM projet.etudiants et, projet.candidatures c
 WHERE et.matricule_etudiant = c.etudiant AND c.etat != 'acceptée'
 GROUP BY et.nom, et.prenom, et.mail, et.semestre_stage;
+
+--APP PROFESSEUR 8.
+--Voir les offres de stage dans l’état « attribuée ». Pour chaque offre, on affichera son
+--code, le nom de l’entreprise ainsi que le nom et le prénom de l’étudiant qui le fera.
+/*
+SELECT os.code_offre_stage AS code_offre_de_stage, e.nom AS entreprise, et.nom, et.prenom
+FROM projet.offres_stage os, projet.entreprises e, projet.etudiants et, projet.candidatures c
+WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.matricule_etudiant
+  AND os.etat = 'attribuée'
+ORDER BY et.matricule_etudiant
+ */
