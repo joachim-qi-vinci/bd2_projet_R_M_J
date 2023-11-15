@@ -143,6 +143,7 @@ BEGIN
               WHERE et.nom = NEW.nom AND et.mail = NEW.mail AND et.adresse = NEW.adresse )
     THEN RAISE 'Entreprise déjà encodée';
     END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -247,3 +248,37 @@ WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND 
   AND os.etat = 'attribuée'
 ORDER BY et.matricule_etudiant
  */
+
+--APP ENTREPRISE 1.
+/*Encoder une offre de stage. Pour cela, l’entreprise devra encoder une description et le
+semestre. Chaque offre de stage recevra automatiquement un code qui sera la
+concaténation de l’identifiant de l’entreprise et d’un numéro. Par exemple, le premier
+stage de l’entreprise Vinci aura le code « VIN1 », le deuxième « VIN2 », le dixième «
+VIN10 », … Cette fonctionnalité échouera si l’entreprise a déjà une offre de stage
+attribuée durant ce semestre.*/
+
+CREATE OR REPLACE FUNCTION projet.trigger_insert_offre_de_stage() RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS(SELECT * FROM projet.offres_stage o
+              WHERE o.semestre_offre = NEW.semestre_offre AND o.entreprise = NEW.entreprise)
+    THEN RAISE 'L’entreprise a déjà une offre de stage attribuée durant ce semestre';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.offres_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger_insert_offre_de_stage();
+
+CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre projet.semestre_de_stage) RETURNS VOID AS $$
+DECLARE
+    nbrStage INTEGER;
+BEGIN
+    SELECT COUNT(os.id_offre_stage)
+    FROM offres_stage os
+    WHERE os.entreprise = id_entreprise INTO nbrStage;
+    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage, description_offre, semestre);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT projet.encoderOffreDeStage('APP', 'coucou c est greg', projet.  )
