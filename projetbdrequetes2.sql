@@ -15,7 +15,7 @@ CREATE TABLE projet.etudiants
         CHECK (prenom <> ''),
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
-    semestre_stage projet.semestre_de_stage NOT NULL,
+    semestre_stage projet.semestre_de_stage NOT NULL ,
     mdp VARCHAR(20) NOT NULL,
     nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0
 );
@@ -80,9 +80,14 @@ INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semes
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('MIC', 'MIC1', 'Petit stage sympathique chez Microsoft','Q1');
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('HUA','HUA1','Gros stage de haut niveau chez les chinois','Q1');
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('SAM', 'SAM1', 'Petit stage sympathique chez Samsung', 'Q2');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('SAM', 'SAM2', 'gros stage pas sympathique chez Samsung', 'Q2','validée');
 
 -- UPDATE OFFRE_STAGE
+
 UPDATE projet.offres_stage SET etat = 'validée' WHERE id_offre_stage = 4;
+UPDATE projet.offres_stage SET etat = 'attribuée' WHERE id_offre_stage = 4;
+
+
 --INSERT INTO ETUDIANTS
 INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Qi', 'Joachim', 'joachim.qi@student.vinci.be', 'Q1', '1234');
 INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Margjini', 'Mario', 'mario.margjini@student.vinci.be', 'Q1', '1234');
@@ -101,8 +106,9 @@ INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
 INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
 INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
 INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
-
-
+--INSTERT INTO MOTS-CLES-OFFRES-STAGES
+INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (6,1);
+INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (6,2);
 
 --APP PROFESSEUR 1.
 --Encoder un étudiant : le professeur devra encoder son nom, son prénom, son adresse
@@ -254,6 +260,36 @@ FROM projet.offres_stage os, projet.entreprises e, projet.etudiants et, projet.c
 WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.id_etudiant
   AND os.etat = 'attribuée'
 ORDER BY et.id_etudiant;
+
+
+
+--APP ÉTUDIANT 1.
+--Voir toutes les offres de stage dans l’état « validée » correspondant au semestre où
+--l’étudiant fera son stage. Pour une offre de stage, on affichera son code, le nom de
+--l’entreprise, son adresse, sa description et les mots-clés (séparés par des virgules sur
+--une même ligne).
+CREATE OR REPLACE VIEW projet.voir_offres_validees_semestre AS
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
+FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+WHERE et.semestre_stage = os.semestre_offre
+AND os.etat = 'validée'
+AND os.entreprise=en.id_entreprise
+AND mcos.offre_stage=os.id_offre_stage
+AND mcos.mot_cle=mc.id_mot_cle
+group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
+
+SELECT * FROM projet.voir_offres_validees_semestre;
+
+--APP ÉTUDIANT 2.
+--Recherche d’une offre de stage par mot clé. Cette recherche n’affichera que les offres
+--de stages validées et correspondant au semestre où l’étudiant fera son stage. Les
+--offres de stage seront affichées comme au point précédent.
+
+/*
+ORDER BY et.matricule_etudiant;
+>>>>>>> 3743c337ec94887072c15f084df3c80cd92fea6e
+
+ */
 
 
 --APP ENTREPRISE 1.
