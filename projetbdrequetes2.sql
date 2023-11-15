@@ -29,7 +29,7 @@ CREATE TABLE projet.entreprises
     adresse VARCHAR(100) NOT NULL
         CHECK (adresse <> ''),
     mail VARCHAR(60) NOT NULL,
-        CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
+    CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
     mpd VARCHAR(20) NOT NULL
 );
 
@@ -193,21 +193,19 @@ ORDER BY semestre_offre, e.id_entreprise;
 CREATE OR REPLACE FUNCTION projet.trigger3() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si l'offre de stage est à l'état "non validée"
-    IF (OLD.etat = 'non-validée' AND NEW.etat = 'validée') THEN
-        RETURN NEW;
+    IF (NEW.etat = 'validée' AND OLD.etat != 'non-validée') THEN
+        RAISE 'L''offre ne peut plus etre validée';
     END IF;
-    IF (OLD.etat = 'validée' AND NEW.etat = 'attribuée') THEN
-        RETURN NEW;
+    IF (NEW.etat = 'attribuée' AND OLD.etat != 'validée') THEN
+        RETURN 'L''offre ne peut pas etre attribuée';
     END IF;
-    IF (OLD.etat = 'validée' AND NEW.etat = 'annulée') THEN
-        RETURN NEW;
-    END IF;
-    IF (OLD.etat = 'attribuée' AND NEW.etat = 'annulée') THEN
-        RAISE 'Cette offre ne peut plus être annulée';
-    END IF;
-    IF (OLD.etat = 'annulée' AND NEW.etat = 'attribuée') THEN
+    IF (OLD.etat = 'annulée') THEN
         RAISE 'Cette offre est annulée';
     END IF;
+    IF (OLD.etat = 'non-validée' AND NEW.etat != 'validée') THEN
+        RAISE 'Cette offre n''est pas encore validée';
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
