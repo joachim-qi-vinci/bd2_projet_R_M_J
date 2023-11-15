@@ -8,15 +8,14 @@ CREATE TYPE projet.etat_candidature AS ENUM ('en attente', 'acceptée', 'refusé
 
 CREATE TABLE projet.etudiants
 (
-    matricule_etudiant SERIAL PRIMARY KEY NOT NULL,
+    id_etudiant SERIAL PRIMARY KEY NOT NULL,
     nom VARCHAR(40) NOT NULL
         CHECK (nom <> ''),
     prenom VARCHAR(40) NOT NULL
         CHECK (prenom <> ''),
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
-    semestre_stage projet.semestre_de_stage NOT NULL
-        CHECK (etudiants.semestre_stage IN ('Q1', 'Q2')),
+    semestre_stage projet.semestre_de_stage NOT NULL,
     mdp VARCHAR(20) NOT NULL,
     nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0
 );
@@ -48,14 +47,13 @@ CREATE TABLE projet.offres_stage
         CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}[0-9]')
     ,
     description VARCHAR(200) NOT NULL CHECK (description <> ''),
-    semestre_offre projet.semestre_de_stage NOT NULL
-        CHECK (semestre_offre IN ('Q1', 'Q2')),
+    semestre_offre projet.semestre_de_stage NOT NULL,
     etat projet.etat_offre NOT NULL DEFAULT 'non-validée'
 );
 
 CREATE TABLE projet.candidatures
 (
-    etudiant    INTEGER REFERENCES projet.etudiants (matricule_etudiant) NOT NULL,
+    etudiant    INTEGER REFERENCES projet.etudiants (id_etudiant) NOT NULL,
     offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage) NOT NULL,
     motivation VARCHAR(200) NOT NULL,
     etat projet.etat_candidature NOT NULL DEFAULT 'en attente',
@@ -247,7 +245,7 @@ SELECT projet.offres_validees.* FROM projet.offres_validees;
 
 SELECT et.nom, et.prenom, et.mail, et.semestre_stage, COUNT(c.*)
 FROM projet.etudiants et, projet.candidatures c
-WHERE et.matricule_etudiant = c.etudiant AND c.etat != 'acceptée'
+WHERE et.id_etudiant = c.etudiant AND c.etat != 'acceptée'
 GROUP BY et.nom, et.prenom, et.mail, et.semestre_stage;
 
 --APP PROFESSEUR 8.
@@ -257,8 +255,8 @@ GROUP BY et.nom, et.prenom, et.mail, et.semestre_stage;
 CREATE VIEW projet.offres_stages_attribuees AS
 SELECT os.code_offre_stage AS code_offre_de_stage, e.nom AS entreprise, et.nom, et.prenom
 FROM projet.offres_stage os, projet.entreprises e, projet.etudiants et, projet.candidatures c
-WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.matricule_etudiant
+WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.id_etudiant
   AND os.etat = 'attribuée'
-ORDER BY et.matricule_etudiant;
+ORDER BY et.id_etudiant;
 
 SELECT projet.offres_stages_attribuees.* FROM projet.offres_stages_attribuees;
