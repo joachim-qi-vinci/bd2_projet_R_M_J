@@ -8,7 +8,7 @@ CREATE TYPE projet.etat_candidature AS ENUM ('en attente', 'acceptée', 'refusé
 
 CREATE TABLE projet.etudiants
 (
-    matricule_etudiant SERIAL PRIMARY KEY NOT NULL,
+    id_etudiant SERIAL PRIMARY KEY NOT NULL,
     nom VARCHAR(40) NOT NULL
         CHECK (nom <> ''),
     prenom VARCHAR(40) NOT NULL
@@ -43,7 +43,7 @@ CREATE TABLE projet.offres_stage
 (
     id_offre_stage SERIAL PRIMARY KEY NOT NULL,
     entreprise CHAR(3) REFERENCES projet.entreprises(id_entreprise) NOT NULL,
-    code_offre_stage VARCHAR(5) NOT NULL
+    code_offre_stage VARCHAR(5) NOT NULL UNIQUE
         CHECK ( code_offre_stage SIMILAR TO '[A-Z]{3}[0-9]')
     ,
     description VARCHAR(200) NOT NULL CHECK (description <> ''),
@@ -53,7 +53,7 @@ CREATE TABLE projet.offres_stage
 
 CREATE TABLE projet.candidatures
 (
-    etudiant    INTEGER REFERENCES projet.etudiants (matricule_etudiant) NOT NULL,
+    etudiant    INTEGER REFERENCES projet.etudiants (id_etudiant) NOT NULL,
     offre_stage INTEGER REFERENCES projet.offres_stage(id_offre_stage) NOT NULL,
     motivation VARCHAR(200) NOT NULL,
     etat projet.etat_candidature NOT NULL DEFAULT 'en attente',
@@ -81,6 +81,10 @@ INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semes
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('HUA','HUA1','Gros stage de haut niveau chez les chinois','Q1');
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('SAM', 'SAM1', 'Petit stage sympathique chez Samsung', 'Q2');
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('SAM', 'SAM2', 'gros stage pas sympathique chez Samsung', 'Q2','validée');
+
+-- UPDATE OFFRE_STAGE
+UPDATE projet.offres_stage SET etat = 'attribuée' WHERE id_offre_stage = 4;
+
 --INSERT INTO ETUDIANTS
 INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Qi', 'Joachim', 'joachim.qi@student.vinci.be', 'Q1', '1234');
 INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Margjini', 'Mario', 'mario.margjini@student.vinci.be', 'Q1', '1234');
@@ -142,6 +146,7 @@ BEGIN
               WHERE et.nom = NEW.nom AND et.mail = NEW.mail AND et.adresse = NEW.adresse )
     THEN RAISE 'Entreprise déjà encodée';
     END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -192,11 +197,20 @@ ORDER BY semestre_offre, e.id_entreprise;
 CREATE OR REPLACE FUNCTION projet.trigger3() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si l'offre de stage est à l'état "non validée"
-    IF NOT EXISTS(SELECT * FROM projet.offres_stage os
-                  WHERE os.code_offre_stage = NEW.code_offre_stage AND os.etat = 'non-validée')
-    THEN
-        --Lève une exception si l'offre de stage est dans un autre état que "non-validée"
-        RAISE 'Offre de stage plus dans l''état non validée';
+    IF (OLD.etat = 'non-validée' AND NEW.etat = 'validée') THEN
+        RETURN NEW;
+    END IF;
+    IF (OLD.etat = 'validée' AND NEW.etat = 'attribuée') THEN
+        RETURN NEW;
+    END IF;
+    IF (OLD.etat = 'validée' AND NEW.etat = 'annulée') THEN
+        RETURN NEW;
+    END IF;
+    IF (OLD.etat = 'attribuée' AND NEW.etat = 'annulée') THEN
+        RAISE 'Cette offre ne peut plus être annulée';
+    END IF;
+    IF (OLD.etat = 'annulée' AND NEW.etat = 'attribuée') THEN
+        RAISE 'Cette offre est annulée';
     END IF;
     RETURN NEW;
 END;
@@ -220,11 +234,13 @@ UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1'
 
 --APP PROFESSEUR 6.
 --Voir les offres de stage dans l’état « validée ». Même affichage qu’au point 4.
-
+CREATE VIEW projet.offres_validees AS
 SELECT os.id_offre_stage, os.code_offre_stage AS code_de_stage, os.semestre_offre AS semestre, e.nom AS entreprise, os.description
 FROM projet.offres_stage os, projet.entreprises e
 WHERE os.entreprise = e.id_entreprise AND os.etat = 'validée'
 ORDER BY semestre_offre, e.id_entreprise;
+
+SELECT projet.offres_validees.* FROM projet.offres_validees;
 
 --APP PROFESSEUR 7.
 --Voir les étudiants qui n’ont pas de stage (pas de candidature à l’état « acceptée »).
@@ -233,19 +249,20 @@ ORDER BY semestre_offre, e.id_entreprise;
 
 SELECT et.nom, et.prenom, et.mail, et.semestre_stage, COUNT(c.*)
 FROM projet.etudiants et, projet.candidatures c
-WHERE et.matricule_etudiant = c.etudiant AND c.etat != 'acceptée'
+WHERE et.id_etudiant = c.etudiant AND c.etat != 'acceptée'
 GROUP BY et.nom, et.prenom, et.mail, et.semestre_stage;
 
 --APP PROFESSEUR 8.
 --Voir les offres de stage dans l’état « attribuée ». Pour chaque offre, on affichera son
 --code, le nom de l’entreprise ainsi que le nom et le prénom de l’étudiant qui le fera.
-/*
+
+CREATE VIEW projet.offres_stages_attribuees AS
 SELECT os.code_offre_stage AS code_offre_de_stage, e.nom AS entreprise, et.nom, et.prenom
 FROM projet.offres_stage os, projet.entreprises e, projet.etudiants et, projet.candidatures c
-WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.matricule_etudiant
+WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.id_etudiant
   AND os.etat = 'attribuée'
-ORDER BY et.matricule_etudiant
- */
+ORDER BY et.id_etudiant;
+
 
 --APP ÉTUDIANT 1.
 --Voir toutes les offres de stage dans l’état « validée » correspondant au semestre où
@@ -253,14 +270,14 @@ ORDER BY et.matricule_etudiant
 --l’entreprise, son adresse, sa description et les mots-clés (séparés par des virgules sur
 --une même ligne).
 CREATE OR REPLACE VIEW projet.voir_offres_validees_semestre AS
-SELECT  et.matricule_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
 WHERE et.semestre_stage = os.semestre_offre
 AND os.etat = 'validée'
 AND os.entreprise=en.id_entreprise
 AND mcos.offre_stage=os.id_offre_stage
 AND mcos.mot_cle=mc.id_mot_cle
-group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.matricule_etudiant;
+group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
 
 SELECT * FROM projet.voir_offres_validees_semestre;
 
@@ -268,3 +285,48 @@ SELECT * FROM projet.voir_offres_validees_semestre;
 --Recherche d’une offre de stage par mot clé. Cette recherche n’affichera que les offres
 --de stages validées et correspondant au semestre où l’étudiant fera son stage. Les
 --offres de stage seront affichées comme au point précédent.
+
+/*
+ORDER BY et.matricule_etudiant;
+
+ */
+
+
+--APP ENTREPRISE 1.
+/*Encoder une offre de stage. Pour cela, l’entreprise devra encoder une description et le
+semestre. Chaque offre de stage recevra automatiquement un code qui sera la
+concaténation de l’identifiant de l’entreprise et d’un numéro. Par exemple, le premier
+stage de l’entreprise Vinci aura le code « VIN1 », le deuxième « VIN2 », le dixième «
+VIN10 », … Cette fonctionnalité échouera si l’entreprise a déjà une offre de stage
+attribuée durant ce semestre.*/
+
+CREATE OR REPLACE FUNCTION projet.trigger_insert_offre_de_stage() RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS(SELECT * FROM projet.offres_stage o
+              WHERE o.semestre_offre = NEW.semestre_offre AND o.entreprise = NEW.entreprise)
+    THEN RAISE 'L’entreprise a déjà une offre de stage attribuée durant ce semestre';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.offres_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger_insert_offre_de_stage();
+
+CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre projet.semestre_de_stage) RETURNS VOID AS $$
+DECLARE
+    nbrStage INTEGER;
+BEGIN
+    SELECT COUNT(os.id_offre_stage)
+    FROM offres_stage os
+    WHERE os.entreprise = id_entreprise INTO nbrStage;
+    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage, description_offre, semestre);
+END;
+$$ LANGUAGE plpgsql;
+
+/*
+SELECT projet.encoderOffreDeStage('APP', 'coucou c est greg', projet.  )
+ORDER BY et.id_etudiant;
+
+SELECT projet.offres_stages_attribuees.* FROM projet.offres_stages_attribuees;
+*/
