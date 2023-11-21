@@ -20,6 +20,12 @@ CREATE TABLE projet.etudiants
     nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE projet.mots_cles
+(
+    id_mot_cle SERIAL PRIMARY KEY NOT NULL,
+    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '')
+);
+
 CREATE TABLE projet.entreprises
 (
     id_entreprise CHAR(3) PRIMARY KEY NOT NULL
@@ -31,12 +37,6 @@ CREATE TABLE projet.entreprises
     mail VARCHAR(60) NOT NULL,
     CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
     mpd VARCHAR(20) NOT NULL
-);
-
-CREATE TABLE projet.mots_cles
-(
-    id_mot_cle SERIAL PRIMARY KEY NOT NULL,
-    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '')
 );
 
 CREATE TABLE projet.offres_stage
@@ -188,7 +188,7 @@ CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
 
 
 -- APP PROFESSEUR 4.
-
+CREATE VIEW offre_non_validee AS
 SELECT os.id_offre_stage, os.code_offre_stage AS code_de_stage, os.semestre_offre AS semestre, e.nom AS entreprise, os.description
 FROM projet.offres_stage os, projet.entreprises e
 WHERE os.entreprise = e.id_entreprise AND os.etat = 'non-validée'
@@ -245,7 +245,7 @@ ORDER BY semestre_offre, e.id_entreprise;
 SELECT projet.offres_validees.* FROM projet.offres_validees;
 
 --APP PROFESSEUR 7.
-
+CREATE VIEW projet.etudiants_pas_de_stage AS
 SELECT et.nom, et.prenom, et.mail, et.semestre_stage, et.nbr_candidatures_en_attente
 FROM projet.etudiants et
 WHERE et.id_etudiant NOT IN (SELECT c.etudiant
@@ -272,10 +272,10 @@ CREATE OR REPLACE VIEW projet.voir_offres_validees_semestre AS
 SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
 WHERE et.semestre_stage = os.semestre_offre
-AND os.etat = 'validée'
-AND os.entreprise=en.id_entreprise
-AND mcos.offre_stage=os.id_offre_stage
-AND mcos.mot_cle=mc.id_mot_cle
+  AND os.etat = 'validée'
+  AND os.entreprise=en.id_entreprise
+  AND mcos.offre_stage=os.id_offre_stage
+  AND mcos.mot_cle=mc.id_mot_cle
 group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
 
 SELECT * FROM projet.voir_offres_validees_semestre;
