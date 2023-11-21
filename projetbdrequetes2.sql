@@ -230,7 +230,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 --UPDATE OFFRE DE STAGE
-UPDATE projet.offres_stage SET etat = 'attribuée' WHERE code_offre_stage = 'HUA1';
+--UPDATE projet.offres_stage SET etat = 'attribuée' WHERE code_offre_stage = 'HUA1';
 --UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
 
 
@@ -326,5 +326,17 @@ $$ LANGUAGE plpgsql;
 
 --APP entreprise 2.
 
-SELECT projet.offres_stages_attribuees.* FROM projet.offres_stages_attribuees;
 
+
+--APP ENTREPRISE 4.
+/*4. Voir ses offres de stages : Pour chaque offre de stage, on affichera son code, sa
+description, son semestre, son état, le nombre de candidatures en attente et le nom
+de l’étudiant qui fera le stage (si l’offre a déjà été attribuée). Si l'offre de stage n'a pas
+encore été attribuée, il sera indiqué "pas attribuée" à la place du nom de l'étudiant.
+ */
+
+
+SELECT  os.code_offre_stage, os.description, os.semestre_offre, os.etat, COUNT(DISTINCT c.etudiant) FROM projet.offres_stage os,
+                                                                             projet.candidatures c
+WHERE etudiant
+GROUP BY os.code_offre_stage, os.description, os.semestre_offre, os.etat
