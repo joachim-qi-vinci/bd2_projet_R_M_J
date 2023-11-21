@@ -285,6 +285,23 @@ SELECT * FROM projet.voir_offres_validees_semestre;
 --de stages validées et correspondant au semestre où l’étudiant fera son stage. Les
 --offres de stage seront affichées comme au point précédent.
 
+CREATE OR REPLACE FUNCTION projet.voir_offres_validees_mot_cle(mot_cle_proced INTEGER) RETURNS SETOF RECORD AS $$
+
+DECLARE
+BEGIN
+    SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
+    FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+    WHERE et.semestre_stage = os.semestre_offre
+    AND os.etat = 'validée'
+    AND os.entreprise=en.id_entreprise
+    AND mcos.offre_stage=os.id_offre_stage
+    AND mcos.mot_cle=mc.id_mot_cle
+    AND mc.id_mot_cle = mot_cle_proced
+    GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
+END ;
+$$ language plpgsql;
+
+SELECT 
 /*
 ORDER BY et.matricule_etudiant;
 >>>>>>> 3743c337ec94887072c15f084df3c80cd92fea6e
