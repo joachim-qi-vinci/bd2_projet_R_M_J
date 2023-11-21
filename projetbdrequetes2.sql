@@ -352,8 +352,20 @@ de l’étudiant qui fera le stage (si l’offre a déjà été attribuée). Si 
 encore été attribuée, il sera indiqué "pas attribuée" à la place du nom de l'étudiant.
  */
 
+CREATE VIEW projet.offres_stages AS
+    SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,
+           COUNT(DISTINCT ca.etudiant) AS nbr_etudiants_candidats, COALESCE(e.nom,'non-attribuée') AS attribuée_a
+FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures ca ON ca.offre_stage = os.id_offre_stage
+    LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
+GROUP BY os.code_offre_stage, os.description, os.semestre_offre, os.etat, e.nom, os.entreprise;
 
-SELECT  os.code_offre_stage, os.description, os.semestre_offre, os.etat, COUNT(DISTINCT c.etudiant) FROM projet.offres_stage os,
-                                                                             projet.candidatures c
-WHERE etudiant
-GROUP BY os.code_offre_stage, os.description, os.semestre_offre, os.etat
+SELECT * FROM projet.offres_stages os WHERE entreprise = 'SAM';
+
+--APP ENTREPRISE 5
+/*
+5. Voir les candidatures pour une de ses offres de stages en donnant son code. Pour
+chaque candidature, on affichera son état, le nom, prénom, adresse mail et les
+motivations de l’étudiant. Si le code ne correspond pas à une offre de l’entreprise ou
+qu’il n’y a pas de candidature pour cette offre, le message suivant sera affiché “Il n'y a
+pas de candidatures pour cette offre ou vous n'avez pas d'offre ayant ce code”.
+ */
