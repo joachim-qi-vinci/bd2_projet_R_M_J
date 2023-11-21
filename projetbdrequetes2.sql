@@ -303,7 +303,7 @@ attribuée durant ce semestre.*/
 CREATE OR REPLACE FUNCTION projet.trigger_insert_offre_de_stage() RETURNS TRIGGER AS $$
 BEGIN
     IF EXISTS(SELECT * FROM projet.offres_stage o
-              WHERE o.semestre_offre = NEW.semestre_offre AND o.entreprise = NEW.entreprise)
+              WHERE o.semestre_offre = NEW.semestre_offre AND o.entreprise = NEW.entreprise and o.etat = 'attribuée')
     THEN RAISE 'L’entreprise a déjà une offre de stage attribuée durant ce semestre';
     END IF;
     RETURN NEW;
@@ -318,15 +318,13 @@ DECLARE
     nbrStage INTEGER;
 BEGIN
     SELECT COUNT(os.id_offre_stage)
-    FROM offres_stage os
+    FROM projet.offres_stage os
     WHERE os.entreprise = id_entreprise INTO nbrStage;
-    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage, description_offre, semestre);
+    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre);
 END;
 $$ LANGUAGE plpgsql;
 
-/*
-SELECT projet.encoderOffreDeStage('APP', 'coucou c est greg', projet.  )
-ORDER BY et.id_etudiant;
+--APP entreprise 2.
 
 SELECT projet.offres_stages_attribuees.* FROM projet.offres_stages_attribuees;
-*/
+
