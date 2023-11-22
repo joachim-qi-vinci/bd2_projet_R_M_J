@@ -272,10 +272,10 @@ CREATE OR REPLACE VIEW projet.voir_offres_validees_semestre AS
 SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
 WHERE et.semestre_stage = os.semestre_offre
-AND os.etat = 'validée'
-AND os.entreprise=en.id_entreprise
-AND mcos.offre_stage=os.id_offre_stage
-AND mcos.mot_cle=mc.id_mot_cle
+  AND os.etat = 'validée'
+  AND os.entreprise=en.id_entreprise
+  AND mcos.offre_stage=os.id_offre_stage
+  AND mcos.mot_cle=mc.id_mot_cle
 group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
 
 SELECT * FROM projet.voir_offres_validees_semestre;
@@ -310,8 +310,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.trigger_insert_offre_de_stage();
+
 
 CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre projet.semestre_de_stage) RETURNS VOID AS $$
 DECLARE
@@ -324,7 +326,81 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---APP entreprise 2.
 
-SELECT projet.offres_stages_attribuees.* FROM projet.offres_stages_attribuees;
+--APP entreprise 2.
+-- Voir les mots-clés disponibles pour décrire une offre de stage
+
+CREATE VIEW projet.voir_mots_cles AS
+SELECT DISTINCT mc.intitule
+FROM projet.mots_cles mc;
+
+SELECT * FROM projet.voir_mots_cles;
+
+
+--APP entreprise 3.
+/*Ajouter un mot-clé à une de ses offres de stage (en utilisant son code). Une offre de
+stage peut avoir au maximum 3 mots-clés. Ces mots-clés doivent faire partie de la liste
+des mots-clés proposés par les professeurs. Il ne sera pas possible d'ajouter un mot-
+clé si l'offre de stage est dans l'état "attribuée" ou "annulée" ou si l’offre n’est pas une
+offre de l’entreprise*/
+
+CREATE OR REPLACE FUNCTION projet.trigger_ajouter_mot_cle_a_offre_de_stage() RETURNS TRIGGER AS $$
+BEGIN
+    IF ((SELECT COUNT(mcos.mot_cle)
+         FROM projet.mots_cles_offre_stage mcos
+         WHERE mcos.offre_stage = NEW.offre_stage) = 3) THEN RAISE 'Une offre de stage peut avoir au maximum 3 mots-clés';
+    END IF;
+
+    IF(NOT EXISTS(SELECT mc.id_mot_cle
+                  FROM projet.mots_cles mc
+                  WHERE mc.id_mot_cle = NEW.mot_cle)) THEN RAISE 'Ce mot clé n''existe pas';
+    END IF;
+
+    IF(EXISTS(SELECT os.id_offre_stage
+              FROM projet.offres_stage os
+              WHERE os.id_offre_stage = NEW.offre_stage AND (os.etat = 'attribuée' OR os.etat = 'annulée'))) THEN RAISE 'L''offre de stage est déjà attribuée ou annulée';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.mots_cles_offre_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger_ajouter_mot_cle_a_offre_de_stage();
+
+CREATE OR REPLACE FUNCTION projet.ajouterUnMotCleAUneOffreDeStage(offre_stage VARCHAR(5), mot_cle VARCHAR(15), id_entreprise CHAR(3)) RETURNS VOID AS $$
+DECLARE
+    id_offre_de_stage INTEGER;
+    id_mot_cle INTEGER;
+BEGIN
+    SELECT os.id_offre_stage
+    FROM projet.offres_stage os
+    WHERE os.code_offre_stage = offre_stage INTO id_offre_de_stage;
+
+    IF id_offre_de_stage IS NULL THEN RAISE 'Il n y a aucune offre de stage associée à ce code';
+    END IF;
+
+    SELECT mc.id_mot_cle
+    FROM projet.mots_cles mc
+    WHERE mc.intitule = mot_cle INTO id_mot_cle;
+
+    IF(NOT EXISTS(SELECT os.id_offre_stage
+                  FROM projet.offres_stage os
+                  WHERE os.id_offre_stage = id_offre_de_stage AND os.entreprise = id_entreprise)) THEN RAISE 'Ce n''est pas une offre de stage de l''entreprise';
+    END IF;
+
+    INSERT INTO projet.mots_cles_offre_stage VALUES (id_offre_de_stage, id_mot_cle);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT projet.ajouterUnMotCleAUneOffreDeStage('SAM2','CONCEPTION','SAM'); -- correct
+SELECT projet.ajouterUnMotCleAUneOffreDeStage('rob','SQL','APP'); -- offre inexistante
+SELECT projet.ajouterUnMotCleAUneOffreDeStage('SAM2','Web','SAM'); -- offre a déjà 3 mots-clés
+SELECT projet.ajouterUnMotCleAUneOffreDeStage('MIC1','brtzer','MIC'); -- mot-cle pas compris dans la liste des mots-clés des profs
+SELECT projet.ajouterUnMotCleAUneOffreDeStage('HUA1','SQL','HUA'); -- etat offre attribuee ou annulée
+SELECT projet.ajouterUnMotCleAUneOffreDeStage('APP1','SQL','HUA'); -- pas offre de l'entreprise
+
+
+
 
