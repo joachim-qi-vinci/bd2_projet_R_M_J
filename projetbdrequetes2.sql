@@ -301,13 +301,19 @@ BEGIN
 END ;
 $$ language plpgsql;
 
-SELECT
+
+-- APP ETUDIANT 4.
 /*
-ORDER BY et.matricule_etudiant;
->>>>>>> 3743c337ec94887072c15f084df3c80cd92fea6e
+ 4. Voir les offres de stage pour lesquels l’étudiant a posé sa candidature. Pour chaque
+offre, on verra le code de l’offre, le nom de l’entreprise ainsi que l’état de sa
+candidature.
+*/
+CREATE VIEW projet.mes_candidatures AS
+SELECT ca.etudiant, os.code_offre_stage, en.nom, ca.etat
+FROM projet.offres_stage os, projet.entreprises en, projet.candidatures ca
+WHERE os.entreprise = en.id_entreprise AND ca.offre_stage = os.id_offre_stage;
 
- */
-
+SELECT * FROM projet.mes_candidatures mc WHERE mc.etudiant = '3';
 
 --APP ENTREPRISE 1.
 /*Encoder une offre de stage. Pour cela, l’entreprise devra encoder une description et le
@@ -355,13 +361,13 @@ CREATE VIEW projet.mes_offres AS
 WITH candidatures_en_attente AS (
     SELECT os.id_offre_stage ,COUNT(c.etudiant) AS nb_candidatures_attente
     FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
-    AND c.offre_stage = os.id_offre_stage
-      AND c.etat = 'en attente'
+        AND c.offre_stage = os.id_offre_stage
+        AND c.etat = 'en attente'
     GROUP BY os.id_offre_stage)
 SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,cea.nb_candidatures_attente ,COALESCE(e.nom,'non-attribuée') AS attribuée_a
-                         FROM   candidatures_en_attente cea, projet.offres_stage os
-                             LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
-                             LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
-                        WHERE cea.id_offre_stage = os.id_offre_stage;
+FROM   candidatures_en_attente cea, projet.offres_stage os
+                                        LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
+                                        LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
+WHERE cea.id_offre_stage = os.id_offre_stage;
 SELECT * FROM projet.mes_offres os WHERE os.entreprise = 'SAM';
 
