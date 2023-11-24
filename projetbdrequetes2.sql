@@ -451,7 +451,9 @@ SELECT projet.ajouterUnMotCleAUneOffreDeStage('SAM2','Web','SAM'); -- offre a d�
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('MIC1','brtzer','MIC'); -- mot-cle pas compris dans la liste des mots-clés des profs
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('HUA1','SQL','HUA'); -- etat offre attribuee ou annulée
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('APP1','SQL','HUA'); -- pas offre de l'entreprise
+<<<<<<< HEAD
 */
+
 --APP ENTREPRISE 4.
 
 CREATE VIEW projet.mes_offres AS
@@ -467,4 +469,46 @@ FROM   candidatures_en_attente cea, projet.offres_stage os
                                         LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
 WHERE cea.id_offre_stage = os.id_offre_stage;
 SELECT * FROM projet.mes_offres os WHERE os.entreprise = 'SAM';
+
+
+
+--APPLICATION ENTREPRISE 5
+/*
+ Voir les candidatures pour une de ses offres de stages en donnant son code. Pour
+chaque candidature, on affichera son état, le nom, prénom, adresse mail et les
+motivations de l’étudiant. Si le code ne correspond pas à une offre de l’entreprise ou
+qu’il n’y a pas de candidature pour cette offre, le message suivant sera affiché “Il n'y a
+pas de candidatures pour cette offre ou vous n'avez pas d'offre ayant ce code”.
+ */
+
+
+CREATE OR REPLACE FUNCTION projet.voir_les_candidatures_offre(offre_stage_param VARCHAR(5),id_entreprise_param CHAR(3)) RETURNS SETOF RECORD AS $$
+DECLARE
+    id_offre INTEGER;
+BEGIN
+    -- Gestion des cas particuliers
+    SELECT os.id_offre_stage
+    FROM projet.offres_stage os
+    WHERE os.code_offre_stage = offre_stage_param INTO id_offre;
+
+    IF id_offre IS NULL OR (offre_stage_param, id_entreprise_param) NOT IN (
+        SELECT DISTINCT os.code_offre_stage, os.entreprise
+        FROM projet.offres_stage os
+        WHERE os.entreprise = id_entreprise_param)
+    THEN
+        RAISE 'Il n''y a pas de candidatures pour cette offre ou vous n''avez pas d''offre ayant ce code';
+    END IF;
+
+    -- Sélection des candidatures
+    RETURN QUERY
+        SELECT ca.etat, e.nom, e.prenom, e.mail, ca.motivation
+        FROM projet.candidatures ca
+                 LEFT JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
+        WHERE ca.offre_stage = id_offre;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Utilisation de la fonction
+SELECT * FROM projet.voir_les_candidatures_offre('MIC1', 'MIC') t(etat projet.etat_candidature, nom VARCHAR(40), prenom VARCHAR(40), mail VARCHAR(50), motivation VARCHAR(200));;
+
 
