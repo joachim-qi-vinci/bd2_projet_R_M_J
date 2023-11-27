@@ -318,15 +318,15 @@ DECLARE
     offre_semestre semestre_de_stage;
 BEGIN
     IF EXISTS(SELECT ca.etudiant --, ca.offre_stage, ca.motivation, ca.etat, ca.etudiant, ca.offre_stage,
-    FROM projet.candidatures ca
-    WHERE ca.etudiant = NEW.etudiant
-    AND ca.etat = 'acceptée')
+              FROM projet.candidatures ca
+              WHERE ca.etudiant = NEW.etudiant
+                AND ca.etat = 'acceptée')
     THEN RAISE 'cet étudiant a déjà une offre validée';
     END IF;
     IF NOT EXISTS (SELECT os.id_offre_stage
-                    FROM projet.offres_stage os
-                    WHERE os.id_offre_stage = NEW.offre_stage
-                    AND os.etat='validée')
+                   FROM projet.offres_stage os
+                   WHERE os.id_offre_stage = NEW.offre_stage
+                     AND os.etat='validée')
     THEN RAISE 'cet offre de stage n''a pas été validée';
     END IF;
     SELECT et.semestre_stage
@@ -338,7 +338,7 @@ BEGIN
     WHERE os.id_offre_stage = NEW.offre_stage
     INTO offre_semestre;
     IF (etudiant_semestre!=offre_semestre)
-        THEN RAISE 'les semestres ne correspondent pas';
+    THEN RAISE 'les semestres ne correspondent pas';
     END IF;
 
 END
@@ -512,3 +512,36 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM projet.voir_les_candidatures_offre('MIC1', 'MIC') t(etat projet.etat_candidature, nom VARCHAR(40), prenom VARCHAR(40), mail VARCHAR(50), motivation VARCHAR(200));;
 
 
+--APP ENTREPRISE 7
+/*Annuler une offre de stage en donnant son code. Cette opération ne pourra être
+réalisée que si l’offre appartient bien à l’entreprise et si elle n’est pas encore attribuée,
+ni annulée. Toutes les candidatures en attente de cette offre passeront à « refusée ».
+ */
+
+
+CREATE OR REPLACE FUNCTION projet.annulerOffreDeStage() RETURNS TRIGGER AS $$
+BEGIN
+    -- Si l'offre est annulée on ne peut plus rien faire
+    IF (OLD.etat = 'annulée') THEN
+        RAISE 'Cette offre est annulée';
+    END IF;
+    -- Si l'offre est attribuée on ne peut plus rien faire
+    IF (OLD.etat = 'attribuée') THEN
+        RAISE 'Cette offre est déjà attribuée';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
+
+CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre INTEGER, code VARCHAR(5)) RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE projet.offres_stage os SET etat='annulée' WHERE os.code_offre_stage = code;
+    --UPDATE projet.candidatures SET etat = 'refusée' WHERE offre_stage = code_offre AND etat != 'acceptée';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT projet.annulerOffreStage('6', 'SAM2');
