@@ -438,3 +438,12 @@ SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os
                         WHERE cea.id_offre_stage = os.id_offre_stage;
 SELECT * FROM projet.mes_offres os WHERE os.entreprise = 'SAM';
 
+--APP ENTREPRISE 5.
+/*Voir les candidatures pour une de ses offres de stages en donnant son code. Pour
+chaque candidature, on affichera son état, le nom, prénom, adresse mail et les
+motivations de l’étudiant. Si le code ne correspond pas à une offre de l’entreprise ou
+qu’il n’y a pas de candidature pour cette offre, le message suivant sera affiché “Il n'y a
+pas de candidatures pour cette offre ou vous n'avez pas d'offre ayant ce code”*/
+
+CREATE VIEW projet.voir_candidatures AS
+
