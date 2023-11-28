@@ -547,6 +547,19 @@ celles-ci doit passer à « annulée » et toutes les candidatures en attente de
 passeront à « refusée »
  */
 
+CREATE OR REPLACE FUNCTION projet.trigger_refuser_candidature_en_attente() RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.etat = 'annulée' AND OLD.etat != 'annulée') THEN UPDATE projet.candidatures c SET etat = 'refusée' WHERE c.etat = 'en attente' AND NEW.id_offre_stage = c.offre_stage;
+    END IF;
+
+RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_refuser_candidature_en_attente AFTER UPDATE ON projet.offres_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger_refuser_candidature_en_attente();
+
+
 CREATE OR REPLACE FUNCTION projet.selectionnerEtudiantPourUneOffreDeStage(code_offre_stage_atribuee VARCHAR(5), adresse_email_etudiant VARCHAR(50), entreprise_app CHAR(3)) RETURNS VOID AS $$
 DECLARE
     offre_attribuee RECORD;
@@ -558,11 +571,11 @@ BEGIN
     WHERE os.code_offre_stage = code_offre_stage_atribuee INTO offre_attribuee;
 
     SELECT e.*
-    FROM etudiants e
+    FROM projet.etudiants e
     WHERE e.mail = adresse_email_etudiant INTO etudiant_accepte;
 
     SELECT c.*
-    FROM candidatures c
+    FROM projet.candidatures c
     WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etudiant = etudiant_accepte.id_etudiant INTO candidature_acceptee;
 
     IF(offre_attribuee.entreprise != entreprise_app) THEN RAISE 'L''offre n''est pas une offre de l''entreprise';
@@ -574,24 +587,22 @@ BEGIN
     IF(candidature_acceptee.etat != 'en attente') THEN RAISE 'La candidature n''est pas dans l''état en attente';
     END IF;
 
+    -- change l'état de l'offre en attribuée
     UPDATE projet.offres_stage os SET etat='attribuée' WHERE os.code_offre_stage = offre_attribuee.code_offre_stage;
+    -- change l'état de la candidature de l'étudiant en acceptée
     UPDATE projet.candidatures c SET etat='acceptée' WHERE c.etudiant = etudiant_accepte.id_etudiant AND c.offre_stage = offre_attribuee.id_offre_stage;
+    -- change l'état de toutes les autres candidatures de l'étudiant en annulée
     UPDATE projet.candidatures c SET etat='annulée' WHERE c.etudiant = etudiant_accepte.id_etudiant AND c.etat = 'en attente';
-    UPDATE projet.candidatures c SET etat='refusée' WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etat = 'en attente' and c.etudiant != etudiant_accepte.id_etudiant;
+    --change l'état de toutes les candidatures des autres étudiants pour cette offre de stage en refusée
+    UPDATE projet.candidatures c SET etat='refusée' WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etat = 'en attente';
+    --
     UPDATE projet.offres_stage os SET etat='annulée' WHERE os.entreprise = entreprise_app AND os.etat != 'annulée' and os.semestre_offre = offre_attribuee.semestre_offre AND os.id_offre_stage != offre_attribuee.id_offre_stage;
-    UPDATE projet.candidatures c SET etat='refusée' WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etat = 'en attente' and c.etudiant != etudiant_accepte.id_etudiant;
-
-
-
-
-
-
-
-
-
-
 END;
 $$ LANGUAGE plpgsql;
+
+
+--input correct
+SELECT projet.selectionnerEtudiantPourUneOffreDeStage('SAM2', 'robin.salle@student.vinci.be', 'SAM');
 
 
 
@@ -600,6 +611,8 @@ $$ LANGUAGE plpgsql;
 réalisée que si l’offre appartient bien à l’entreprise et si elle n’est pas encore attribuée,
 ni annulée. Toutes les candidatures en attente de cette offre passeront à « refusée ».
  */
+
+
 
 
 CREATE OR REPLACE FUNCTION projet.annulerOffreDeStage() RETURNS TRIGGER AS $$
