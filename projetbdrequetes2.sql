@@ -308,10 +308,6 @@ BEGIN
 END ;
 $$ LANGUAGE plpgsql;
 
-
-
-
-
 CREATE OR REPLACE FUNCTION projet.triggerPoserCandidature() RETURNS TRIGGER AS $$
 DECLARE
     etudiant_semestre semestre_de_stage;
@@ -354,6 +350,32 @@ FROM projet.offres_stage os, projet.entreprises en, projet.candidatures ca
 WHERE os.entreprise = en.id_entreprise AND ca.offre_stage = os.id_offre_stage;
 
 SELECT * FROM projet.mes_candidatures mc WHERE mc.etudiant = '3';
+
+--APP ETUDIANT 5.
+--Annuler une candidature en précisant le code de l’offre de stage. Les candidatures ne
+--peuvent être annulées que si elles sont « en attente »
+
+CREATE OR REPLACE FUNCTION projet.trigger_annuler_candidature() RETURNS TRIGGER AS $$
+BEGIN
+    IF (OLD.etat !='en attente')
+    THEN RAISE 'la candidature doit être en attente pourpouvoir être annulée';
+    END IF;
+RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_annuler_candidature BEFORE UPDATE ON projet.candidatures
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger_annuler_candidature();
+
+CREATE OR REPLACE FUNCTION projet.annuler_candidature(etudiantP INTEGER,offreP INTEGER) RETURNS void AS $$
+BEGIN
+    UPDATE projet.candidatures ca SET etat='annulée' WHERE ca.etudiant = etudiantP AND ca.offre_stage=offreP;
+END
+$$ LANGUAGE plpgsql;
+
+--TESTS
+--SELECT projet.annuler_candidature(2,6);
+--SELECT projet.annuler_candidature(1,3);
 
 --APP ENTREPRISE 1.
 
