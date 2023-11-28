@@ -106,15 +106,11 @@ INSERT INTO projet.mots_cles(intitule) VALUES ('SQL');
 INSERT INTO projet.mots_cles(intitule) VALUES ('JS');
 INSERT INTO projet.mots_cles(intitule) VALUES ('BD');
 INSERT INTO projet.mots_cles(intitule) VALUES ('CONCEPTION');
---INSTERT INTO MOTS-CLES-OFFRES-STAGES
+--INSERT INTO MOTS-CLES-OFFRES-STAGES
 INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (6,1);
 INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (6,2);
 
 --APP PROFESSEUR 1.
---Encoder un étudiant : le professeur devra encoder son nom, son prénom, son adresse
---mail (se terminant par @student.vinci.be) et le semestre pendant lequel il fera son
---stage (Q1 ou Q2). Il choisira également un mot de passe pour l’étudiant. Ce mot de
---passe sera communiqué à l’étudiant par mail.
 
 CREATE OR REPLACE FUNCTION projet.trigger() RETURNS TRIGGER AS $$
 BEGIN
@@ -139,11 +135,6 @@ $$ LANGUAGE plpgsql;
 
 
 --APP PROFESSEUR 2.
---Encoder une entreprise : le professeur devra encoder le nom de l’entreprise, son
---adresse (une seule chaîne de caractère) et son adresse mail. Il choisira pour l’entreprise
---un identifiant composé de 3 lettres majuscules (par exemple « VIN » pour l’entreprise
---Vinci). Il choisira également un mot de passe pour l’entreprise. Ce mot de passe sera
---communiqué à l’entreprise par mail.
 
 CREATE OR REPLACE FUNCTION projet.trigger1() RETURNS TRIGGER AS $$
 BEGIN
@@ -229,11 +220,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---UPDATE OFFRE DE STAGE
---UPDATE projet.offres_stage SET etat = 'attribuée' WHERE code_offre_stage = 'HUA1';
---UPDATE projet.offres_stage SET etat = 'validée' WHERE code_offre_stage = 'HUA1';
-
-
 --APP PROFESSEUR 6.
 
 CREATE VIEW projet.offres_validees AS
@@ -264,10 +250,7 @@ ORDER BY et.id_etudiant;
 
 
 --APP ÉTUDIANT 1.
---Voir toutes les offres de stage dans l’état « validée » correspondant au semestre où
---l’étudiant fera son stage. Pour une offre de stage, on affichera son code, le nom de
---l’entreprise, son adresse, sa description et les mots-clés (séparés par des virgules sur
---une même ligne).
+
 CREATE OR REPLACE VIEW projet.voir_offres_validees_semestre AS
 SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
@@ -278,18 +261,41 @@ WHERE et.semestre_stage = os.semestre_offre
   AND mcos.mot_cle=mc.id_mot_cle
 group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
 
-SELECT * FROM projet.voir_offres_validees_semestre;
+SELECT * FROM projet.voir_offres_validees_semestre ;
 
 --APP ÉTUDIANT 2.
---Recherche d’une offre de stage par mot clé. Cette recherche n’affichera que les offres
---de stages validées et correspondant au semestre où l’étudiant fera son stage. Les
---offres de stage seront affichées comme au point précédent.
 
-CREATE OR REPLACE FUNCTION projet.voir_offres_validees_mot_cle(mot_cle_proced INTEGER) RETURNS SETOF RECORD AS $$
+CREATE OR REPLACE VIEW projet.voirOffresParMotsCles AS
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
+FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+WHERE et.semestre_stage = os.semestre_offre
+  AND os.etat = 'validée'
+  AND os.entreprise=en.id_entreprise
+  AND mcos.offre_stage=os.id_offre_stage
+  AND mcos.mot_cle=mc.id_mot_cle
+GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant,mc.intitule;
 
+
+SELECT id_etudiant, code_offre_stage, entreprise,nom, adresse, description,mots_cles FROM projet.voirOffresParMotsCles  WHERE intitule = 'Web';
+
+--APP ÉTUDIANT 3.
+--Poser sa candidature. Pour cela, il doit donner le code de l’offre de stage et donner ses
+--motivations sous format textuel. Il ne peut poser de candidature s’il a déjà une
+--candidature acceptée, s’il a déjà posé sa candidature pour cette offre, si l’offre n’est
+--pas dans l’état validée ou si l’offre ne correspond pas au bon semestre.
+CREATE OR REPLACE function projet.poserCandidature(etudiantP INTEGER, code_offre varchar(5),motivationP varchar(200))
+    RETURNS VOID AS $$
 DECLARE
+    id_offre INTEGER;
 BEGIN
-    SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
+
+    SELECT os.id_offre_stage
+    FROM projet.offres_stage os
+    WHERE os.code_offre_stage = code_offre
+    INTO id_offre;
+    INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (etudiantP,id_offre,motivationP);
+
+    /*SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
     FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
     WHERE et.semestre_stage = os.semestre_offre
       AND os.etat = 'validée'
@@ -298,24 +304,58 @@ BEGIN
       AND mcos.mot_cle=mc.id_mot_cle
       AND mc.id_mot_cle = mot_cle_proced
     GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
+*/
 END ;
-$$ language plpgsql;
+$$ LANGUAGE plpgsql;
 
---SELECT
-/*
-ORDER BY et.matricule_etudiant;
->>>>>>> 3743c337ec94887072c15f084df3c80cd92fea6e
 
- */
 
+
+
+CREATE OR REPLACE FUNCTION projet.triggerPoserCandidature() RETURNS TRIGGER AS $$
+DECLARE
+    etudiant_semestre semestre_de_stage;
+    offre_semestre semestre_de_stage;
+BEGIN
+    IF EXISTS(SELECT ca.etudiant --, ca.offre_stage, ca.motivation, ca.etat, ca.etudiant, ca.offre_stage,
+              FROM projet.candidatures ca
+              WHERE ca.etudiant = NEW.etudiant
+                AND ca.etat = 'acceptée')
+    THEN RAISE 'cet étudiant a déjà une offre validée';
+    END IF;
+    IF NOT EXISTS (SELECT os.id_offre_stage
+                   FROM projet.offres_stage os
+                   WHERE os.id_offre_stage = NEW.offre_stage
+                     AND os.etat='validée')
+    THEN RAISE 'cet offre de stage n''a pas été validée';
+    END IF;
+    SELECT et.semestre_stage
+    FROM projet.etudiants et
+    WHERE et.id_etudiant=NEW.etudiant
+    INTO etudiant_semestre;
+    SELECT os.semestre_offre
+    FROM projet.offres_stage os
+    WHERE os.id_offre_stage = NEW.offre_stage
+    INTO offre_semestre;
+    IF (etudiant_semestre!=offre_semestre)
+    THEN RAISE 'les semestres ne correspondent pas';
+    END IF;
+
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER triggerPoserCandidature BEFORE INSERT ON projet.candidatures
+    FOR EACH ROW EXECUTE PROCEDURE projet.triggerPoserCandidature();
+-- APP ETUDIANT 4.
+
+CREATE VIEW projet.mes_candidatures AS
+SELECT ca.etudiant, os.code_offre_stage, en.nom, ca.etat
+FROM projet.offres_stage os, projet.entreprises en, projet.candidatures ca
+WHERE os.entreprise = en.id_entreprise AND ca.offre_stage = os.id_offre_stage;
+
+SELECT * FROM projet.mes_candidatures mc WHERE mc.etudiant = '3';
 
 --APP ENTREPRISE 1.
-/*Encoder une offre de stage. Pour cela, l’entreprise devra encoder une description et le
-semestre. Chaque offre de stage recevra automatiquement un code qui sera la
-concaténation de l’identifiant de l’entreprise et d’un numéro. Par exemple, le premier
-stage de l’entreprise Vinci aura le code « VIN1 », le deuxième « VIN2 », le dixième «
-VIN10 », … Cette fonctionnalité échouera si l’entreprise a déjà une offre de stage
-attribuée durant ce semestre.*/
 
 CREATE OR REPLACE FUNCTION projet.trigger_insert_offre_de_stage() RETURNS TRIGGER AS $$
 BEGIN
@@ -345,7 +385,6 @@ $$ LANGUAGE plpgsql;
 
 
 --APP entreprise 2.
--- Voir les mots-clés disponibles pour décrire une offre de stage
 
 CREATE VIEW projet.voir_mots_cles AS
 SELECT DISTINCT mc.intitule
@@ -355,11 +394,6 @@ SELECT * FROM projet.voir_mots_cles;
 
 
 --APP entreprise 3.
-/*Ajouter un mot-clé à une de ses offres de stage (en utilisant son code). Une offre de
-stage peut avoir au maximum 3 mots-clés. Ces mots-clés doivent faire partie de la liste
-des mots-clés proposés par les professeurs. Il ne sera pas possible d'ajouter un mot-
-clé si l'offre de stage est dans l'état "attribuée" ou "annulée" ou si l’offre n’est pas une
-offre de l’entreprise*/
 
 CREATE OR REPLACE FUNCTION projet.trigger_ajouter_mot_cle_a_offre_de_stage() RETURNS TRIGGER AS $$
 BEGIN
@@ -410,40 +444,103 @@ BEGIN
     INSERT INTO projet.mots_cles_offre_stage VALUES (id_offre_de_stage, id_mot_cle);
 END;
 $$ LANGUAGE plpgsql;
-
+/*
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('SAM2','CONCEPTION','SAM'); -- correct
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('rob','SQL','APP'); -- offre inexistante
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('SAM2','Web','SAM'); -- offre a déjà 3 mots-clés
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('MIC1','brtzer','MIC'); -- mot-cle pas compris dans la liste des mots-clés des profs
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('HUA1','SQL','HUA'); -- etat offre attribuee ou annulée
 SELECT projet.ajouterUnMotCleAUneOffreDeStage('APP1','SQL','HUA'); -- pas offre de l'entreprise
+<<<<<<< HEAD
+*/
 
 --APP ENTREPRISE 4.
-/*4. Voir ses offres de stages : Pour chaque offre de stage, on affichera son code, sa
-description, son semestre, son état, le nombre de candidatures en attente et le nom
-de l’étudiant qui fera le stage (si l’offre a déjà été attribuée). Si l'offre de stage n'a pas
-encore été attribuée, il sera indiqué "pas attribuée" à la place du nom de l'étudiant.
- */
+
 CREATE VIEW projet.mes_offres AS
 WITH candidatures_en_attente AS (
     SELECT os.id_offre_stage ,COUNT(c.etudiant) AS nb_candidatures_attente
     FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
-    AND c.offre_stage = os.id_offre_stage
-      AND c.etat = 'en attente'
+        AND c.offre_stage = os.id_offre_stage
+        AND c.etat = 'en attente'
     GROUP BY os.id_offre_stage)
 SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,cea.nb_candidatures_attente ,COALESCE(e.nom,'non-attribuée') AS attribuée_a
-                         FROM   candidatures_en_attente cea, projet.offres_stage os
-                             LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
-                             LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
-                        WHERE cea.id_offre_stage = os.id_offre_stage;
+FROM   candidatures_en_attente cea, projet.offres_stage os
+                                        LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
+                                        LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
+WHERE cea.id_offre_stage = os.id_offre_stage;
 SELECT * FROM projet.mes_offres os WHERE os.entreprise = 'SAM';
 
---APP ENTREPRISE 5.
-/*Voir les candidatures pour une de ses offres de stages en donnant son code. Pour
+
+--APPLICATION ENTREPRISE 5
+/*
+ Voir les candidatures pour une de ses offres de stages en donnant son code. Pour
 chaque candidature, on affichera son état, le nom, prénom, adresse mail et les
 motivations de l’étudiant. Si le code ne correspond pas à une offre de l’entreprise ou
 qu’il n’y a pas de candidature pour cette offre, le message suivant sera affiché “Il n'y a
-pas de candidatures pour cette offre ou vous n'avez pas d'offre ayant ce code”*/
+pas de candidatures pour cette offre ou vous n'avez pas d'offre ayant ce code”.
+ */
 
-CREATE VIEW projet.voir_candidatures AS
 
+CREATE OR REPLACE FUNCTION projet.voir_les_candidatures_offre(offre_stage_param VARCHAR(5),id_entreprise_param CHAR(3)) RETURNS SETOF RECORD AS $$
+DECLARE
+    id_offre INTEGER;
+BEGIN
+    -- Gestion des cas particuliers
+    SELECT os.id_offre_stage
+    FROM projet.offres_stage os
+    WHERE os.code_offre_stage = offre_stage_param INTO id_offre;
+
+    IF id_offre IS NULL OR (offre_stage_param, id_entreprise_param) NOT IN (
+        SELECT DISTINCT os.code_offre_stage, os.entreprise
+        FROM projet.offres_stage os
+        WHERE os.entreprise = id_entreprise_param)
+    THEN
+        RAISE 'Il n''y a pas de candidatures pour cette offre ou vous n''avez pas d''offre ayant ce code';
+    END IF;
+
+    -- Sélection des candidatures
+    RETURN QUERY
+        SELECT ca.etat, e.nom, e.prenom, e.mail, ca.motivation
+        FROM projet.candidatures ca
+                 LEFT JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
+        WHERE ca.offre_stage = id_offre;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Utilisation de la fonction
+SELECT * FROM projet.voir_les_candidatures_offre('MIC1', 'MIC') t(etat projet.etat_candidature, nom VARCHAR(40), prenom VARCHAR(40), mail VARCHAR(50), motivation VARCHAR(200));;
+
+
+--APP ENTREPRISE 7
+/*Annuler une offre de stage en donnant son code. Cette opération ne pourra être
+réalisée que si l’offre appartient bien à l’entreprise et si elle n’est pas encore attribuée,
+ni annulée. Toutes les candidatures en attente de cette offre passeront à « refusée ».
+ */
+
+
+CREATE OR REPLACE FUNCTION projet.annulerOffreDeStage() RETURNS TRIGGER AS $$
+BEGIN
+    -- Si l'offre est annulée on ne peut plus rien faire
+    IF (OLD.etat = 'annulée') THEN
+        RAISE 'Cette offre est annulée';
+    END IF;
+    -- Si l'offre est attribuée on ne peut plus rien faire
+    IF (OLD.etat = 'attribuée') THEN
+        RAISE 'Cette offre est déjà attribuée';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
+
+CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre INTEGER, code VARCHAR(5)) RETURNS VOID AS $$
+DECLARE
+BEGIN
+    UPDATE projet.offres_stage os SET etat='annulée' WHERE os.code_offre_stage = code;
+    --UPDATE projet.candidatures SET etat = 'refusée' WHERE offre_stage = code_offre AND etat != 'acceptée';
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT projet.annulerOffreStage('6', 'SAM2');
