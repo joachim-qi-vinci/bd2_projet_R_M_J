@@ -10,9 +10,9 @@ CREATE TABLE projet.etudiants
 (
     id_etudiant SERIAL PRIMARY KEY NOT NULL,
     nom VARCHAR(40) NOT NULL
-        CHECK (nom <> ''),
+        CHECK (nom != ''),
     prenom VARCHAR(40) NOT NULL
-        CHECK (prenom <> ''),
+        CHECK (prenom != ''),
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL ,
@@ -540,8 +540,17 @@ $$ LANGUAGE plpgsql;
 
 
 -- CREATE USER
---CREATE USER entreprise WITH PASSWORD '1234';
+--CREATE USER joachim WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
+
+GRANT CONNECT ON DATABASE postgres TO joachim;
+GRANT USAGE ON SCHEMA projet TO joachim;
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO joachim;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
+GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
+GRANT INSERT ON TABLE projet.etudiants TO joachim;
 
 
 GRANT CONNECT ON DATABASE postgres TO entreprise;
