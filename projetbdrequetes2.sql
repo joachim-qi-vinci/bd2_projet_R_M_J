@@ -636,27 +636,8 @@ DECLARE
 BEGIN
     SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre INTO id_offre;
     UPDATE projet.offres_stage os SET etat='annulée' WHERE os.id_offre_stage = id_offre;
-    --UPDATE projet.candidatures SET etat = 'refusée' WHERE offre_stage = code_offre AND etat != 'acceptée';
+
 END;
 $$ LANGUAGE plpgsql;
 
 SELECT projet.annulerOffreStage('SAM2');
-
-CREATE OR REPLACE FUNCTION projet.refuser_candidature() RETURNS TRIGGER AS $$
-DECLARE
-    candidat RECORD;
-BEGIN
-    IF (NEW.etat = 'annulée') THEN
-        FOR candidat IN SELECT * FROM projet.candidatures ca WHERE ca.offre_stage = NEW.id_offre_stage
-            LOOP
-                IF (candidat.etat == 'en attente') THEN
-                    UPDATE projet.candidatures ca SET etat = 'refusée' WHERE ca.etudiant = candidat.etudiant ;
-                END IF;
-            END LOOP;
-    END IF;
-    RETURN NEW;
-END
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_refuser_candidature AFTER UPDATE ON projet.offres_stage
-    FOR EACH ROW EXECUTE PROCEDURE projet.refuser_candidature();
