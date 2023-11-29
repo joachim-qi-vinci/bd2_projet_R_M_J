@@ -640,4 +640,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT projet.annulerOffreStage('SAM2');
+--SELECT projet.annulerOffreStage('SAM2');
+
+
+-- CREATE USER
+--CREATE USER entreprise WITH PASSWORD '1234';
+--CREATE USER etudiant WITH PASSWORD '4321';
+
+
+GRANT CONNECT ON DATABASE postgres TO entreprise;
+GRANT USAGE ON SCHEMA projet TO entreprise;
+-- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables d'un schéma
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO entreprise;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO entreprise;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO entreprise;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO entreprise;
+
+GRANT CONNECT ON DATABASE postgres TO etudiant;
+GRANT SELECT ON projet.candidatures, projet.offres_stage, projet.entreprises, projet.mots_cles, projet.mots_cles_offre_stage, projet.etudiants TO etudiant;
+GRANT UPDATE ON projet.candidatures TO etudiant;
+GRANT INSERT ON projet.candidatures TO etudiant;
+

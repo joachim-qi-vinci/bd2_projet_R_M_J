@@ -147,7 +147,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 --APP PROFESSEUR 3.
-CREATE OR REPLACE FUNCTION projet.triggerAjoiutMotCle() RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION projet.triggerAjoutMotCle() RETURNS TRIGGER AS $$
 BEGIN
     -- Vérifier si le mot-clé existe déjà
     IF EXISTS(SELECT * FROM projet.mots_cles mc
@@ -238,14 +238,14 @@ ORDER BY et.id_etudiant;
 --APP ÉTUDIANT 1.
 
 CREATE OR REPLACE VIEW projet.voirOffresValideesSemestre AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
   AND mcos.offre_stage=os.id_offre_stage
   AND mcos.mot_cle=mc.id_mot_cle
-group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant;
+group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant, os.semestre_offre;
 
 
 --APP ÉTUDIANT 2.
@@ -412,7 +412,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE TRIGGER trigger_insert_mot_cle_offre_de_stage BEFORE INSERT ON projet.mots_cles_offre_stage
-    FOR EACH ROW EXECUTE PROCEDURE projet.triggerAjouterMotCleOffreDeStage();
+    FOR EACH ROW EXECUTE PROCEDURE projet.triggerAjouterMotCleOffre();
 
 CREATE OR REPLACE FUNCTION projet.ajouterUnMotCleOffreDeStage(offre_stage VARCHAR(5), mot_cle VARCHAR(15), id_entreprise CHAR(3)) RETURNS VOID AS $$
 DECLARE
@@ -502,6 +502,11 @@ réalisée que si l’offre appartient bien à l’entreprise et si elle n’est
 ni annulée. Toutes les candidatures en attente de cette offre passeront à « refusée ».
  */
 
+--APP ENTREPRISE 7
+/*Annuler une offre de stage en donnant son code. Cette opération ne pourra être
+réalisée que si l’offre appartient bien à l’entreprise et si elle n’est pas encore attribuée,
+ni annulée. Toutes les candidatures en attente de cette offre passeront à « refusée ».
+ */
 
 CREATE OR REPLACE FUNCTION projet.annulerOffreDeStage() RETURNS TRIGGER AS $$
 BEGIN
@@ -517,15 +522,38 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_verifier_offre_de_stage BEFORE UPDATE ON projet.offres_stage
+CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
 
-CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre INTEGER, code VARCHAR(5)) RETURNS VOID AS $$
+
+CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
 DECLARE
+    id_offre INTEGER;
 BEGIN
-    UPDATE projet.offres_stage os SET etat='annulée' WHERE os.code_offre_stage = code;
-    --UPDATE projet.candidatures SET etat = 'refusée' WHERE offre_stage = code_offre AND etat != 'acceptée';
+    SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre INTO id_offre;
+    UPDATE projet.offres_stage os SET etat='annulée' WHERE os.id_offre_stage = id_offre;
+
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT projet.annulerOffreStage('6', 'SAM2');
+--SELECT projet.annulerOffreStage('SAM2');
+
+
+-- CREATE USER
+--CREATE USER entreprise WITH PASSWORD '1234';
+--CREATE USER etudiant WITH PASSWORD '4321';
+
+
+GRANT CONNECT ON DATABASE postgres TO entreprise;
+GRANT USAGE ON SCHEMA projet TO entreprise;
+-- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables d'un schéma
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO entreprise;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO entreprise;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO entreprise;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO entreprise;
+
+GRANT CONNECT ON DATABASE postgres TO etudiant;
+GRANT SELECT ON projet.candidatures, projet.offres_stage, projet.entreprises, projet.mots_cles, projet.mots_cles_offre_stage, projet.etudiants TO etudiant;
+GRANT UPDATE ON projet.candidatures TO etudiant;
+GRANT INSERT ON projet.candidatures TO etudiant;
+
