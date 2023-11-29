@@ -101,7 +101,7 @@ INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 3,
 
 CREATE OR REPLACE FUNCTION projet.triggerAjoutEtudiant() RETURNS TRIGGER AS $$
 BEGIN
-    IF EXISTS(SELECT * FROM projet.etudiants e
+    IF EXISTS (SELECT * FROM projet.etudiants e
               WHERE e.nom = NEW.nom AND e.prenom = NEW.prenom )
     THEN RAISE 'Etudiant déjà encodé';
     END IF;
@@ -113,13 +113,12 @@ CREATE TRIGGER trigger_ajout_etudiant BEFORE INSERT ON projet.etudiants
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerAjoutEtudiant();
 
 CREATE OR REPLACE FUNCTION projet.encoderEtudiant(nom_etudiant VARCHAR(40), prenom_etudiant VARCHAR(40), mail_etudiant VARCHAR(50),
-                                                  semestre_stage projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
+                                                  semestre projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
 DECLARE
 BEGIN
-    INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES (nom_etudiant, prenom_etudiant, mail_etudiant, semestre_stage, mdp_etudiant);
+    INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES (nom_etudiant, prenom_etudiant, mail_etudiant, semestre, mdp_etudiant);
 END;
 $$ LANGUAGE plpgsql;
-
 
 --APP PROFESSEUR 2.
 
@@ -540,17 +539,17 @@ $$ LANGUAGE plpgsql;
 
 
 -- CREATE USER
---CREATE USER joachim WITH PASSWORD '1234';
+--CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
-GRANT CONNECT ON DATABASE postgres TO joachim;
-GRANT USAGE ON SCHEMA projet TO joachim;
-GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO joachim;
-GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
-GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
-GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
-GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
-GRANT INSERT ON TABLE projet.etudiants TO joachim;
+GRANT CONNECT ON DATABASE postgres TO joachime;
+GRANT USAGE ON SCHEMA projet TO joachime;
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO joachime;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachime;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachime;
+GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
+GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
 
 GRANT CONNECT ON DATABASE postgres TO entreprise;
