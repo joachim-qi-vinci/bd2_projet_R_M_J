@@ -251,17 +251,17 @@ group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage,
 --APP ÉTUDIANT 2.
 
 CREATE OR REPLACE VIEW projet.voirOffresParMotsCles AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
+SELECT  et.id_etudiant,os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
   AND mcos.offre_stage=os.id_offre_stage
   AND mcos.mot_cle=mc.id_mot_cle
-GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant,mc.intitule;
+GROUP BY et.id_etudiant, os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description, mc.intitule;
 
 
-
+SELECT o.code_offre_stage,o.entreprise,o.semestre_offre,o.nom,o.adresse,o.description,o.mots_cles FROM projet.voirOffresParMotsCles o WHERE o.id_etudiant=2 AND o.intitule = 'Java';
 
 --APP ÉTUDIANT 3.
 --Poser sa candidature. Pour cela, il doit donner le code de l’offre de stage et donner ses
@@ -443,7 +443,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT projet.ajouterUnMotCleOffreDeStage('ULB1','','ULB');
+/*SELECT projet.ajouterUnMotCleOffreDeStage('ULB1','','ULB');*/
 
 
 --APP ENTREPRISE 4.
@@ -634,7 +634,7 @@ GRANT INSERT ON TABLE projet.etudiants TO joachim;
 --grant for etudiant
 
 
-SELECT e.*
+/*SELECT e.*
 FROM projet.entreprises e
 WHERE e.id_entreprise = 'ulb' AND e.mpd = '1234'
-
+*/
