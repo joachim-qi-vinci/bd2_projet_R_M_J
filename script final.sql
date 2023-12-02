@@ -17,13 +17,14 @@ CREATE TABLE projet.etudiants
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL ,
     mdp VARCHAR(20) NOT NULL,
-    nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0
+    nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT nom_prenom UNIQUE (nom, prenom)
 );
 
 CREATE TABLE projet.mots_cles
 (
     id_mot_cle SERIAL PRIMARY KEY NOT NULL,
-    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '')
+    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '') UNIQUE
 );
 
 CREATE TABLE projet.entreprises
@@ -36,7 +37,8 @@ CREATE TABLE projet.entreprises
         CHECK (adresse <> ''),
     mail VARCHAR(60) NOT NULL,
     CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
-    mpd VARCHAR(20) NOT NULL
+    mpd VARCHAR(20) NOT NULL,
+    CONSTRAINT entreprise_adresse_mail UNIQUE (nom, adresse, mail)
 );
 
 CREATE TABLE projet.offres_stage
@@ -98,20 +100,6 @@ INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 3,
 
 
 --APP PROFESSEUR 1.
-
-CREATE OR REPLACE FUNCTION projet.triggerAjoutEtudiant() RETURNS TRIGGER AS $$
-BEGIN
-    IF EXISTS (SELECT * FROM projet.etudiants e
-              WHERE e.nom = NEW.nom AND e.prenom = NEW.prenom )
-    THEN RAISE 'Etudiant déjà encodé';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_ajout_etudiant BEFORE INSERT ON projet.etudiants
-    FOR EACH ROW EXECUTE PROCEDURE projet.triggerAjoutEtudiant();
-
 CREATE OR REPLACE FUNCTION projet.encoderEtudiant(nom_etudiant VARCHAR(40), prenom_etudiant VARCHAR(40), mail_etudiant VARCHAR(50),
                                                   semestre projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
 DECLARE
@@ -121,20 +109,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 --APP PROFESSEUR 2.
-
-CREATE OR REPLACE FUNCTION projet.triggerAjoutEntreprise() RETURNS TRIGGER AS $$
-BEGIN
-    IF EXISTS(SELECT * FROM projet.entreprises et
-              WHERE et.nom = NEW.nom AND et.mail = NEW.mail AND et.adresse = NEW.adresse )
-    THEN RAISE 'Entreprise déjà encodée';
-    END IF;
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trigger_ajout_entreprise BEFORE INSERT ON projet.entreprises
-    FOR EACH ROW EXECUTE PROCEDURE projet.triggerAjoutEntreprise();
 
 CREATE OR REPLACE FUNCTION projet.encoderEntreprise(nom_entreprise VARCHAR(40), adresse_entreprise VARCHAR(100), mail_entreprise VARCHAR(60),
                                                     identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(20)) RETURNS VOID AS $$
@@ -146,26 +120,17 @@ END;
 $$ LANGUAGE plpgsql;
 
 --APP PROFESSEUR 3.
-CREATE OR REPLACE FUNCTION projet.triggerAjoutMotCle() RETURNS TRIGGER AS $$
-BEGIN
-    -- Vérifier si le mot-clé existe déjà
-    IF EXISTS(SELECT * FROM projet.mots_cles mc
-              WHERE mc.intitule = NEW.intitule) THEN
-        -- Lever une exception si le mot-clé existe déjà
-        RAISE EXCEPTION 'Ce mot-clé existe déjà';
-    END IF;
 
-    -- Si le mot-clé n'existe pas, l'insertion est autorisée
-    RETURN NEW;
+CREATE OR REPLACE FUNCTION projet.encoderMotCle(intituleParam VARCHAR(15)) RETURNS VOID AS $$
+DECLARE
+BEGIN
+    INSERT INTO projet.mots_cles(intitule) VALUES (intituleParam);
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_mot_cle BEFORE INSERT ON projet.mots_cles
-    FOR EACH ROW EXECUTE PROCEDURE projet.triggerAjoutMotCle();
-
 
 -- APP PROFESSEUR 4.
-CREATE VIEW offreNonValidee AS
+CREATE VIEW projet.offreNonValidee AS
 SELECT os.id_offre_stage, os.code_offre_stage AS code_de_stage, os.semestre_offre AS semestre, e.nom AS entreprise, os.description
 FROM projet.offres_stage os, projet.entreprises e
 WHERE os.entreprise = e.id_entreprise AND os.etat = 'non-validée'
@@ -224,7 +189,7 @@ WHERE et.id_etudiant NOT IN (SELECT c.etudiant
                              FROM projet.candidatures c
                              WHERE et.id_etudiant = c.etudiant AND c.etat = 'acceptée');
 
---APP PROFESSEUR 8.
+--APP PROFESSEUR 8. A REVOIR !
 
 CREATE VIEW projet.offresStagesAttribuees AS
 SELECT os.code_offre_stage AS code_offre_de_stage, e.nom AS entreprise, et.nom, et.prenom
@@ -233,7 +198,9 @@ WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND 
   AND os.etat = 'attribuée'
 ORDER BY et.id_etudiant;
 
+SELECT * FROM projet.offresStagesAttribuees;
 
+SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
 
 --APP ÉTUDIANT 1.
 
@@ -597,10 +564,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-
+SELECT projet.selectionnerEtudiantPourUneOffreDeStage('VIN1', 'j.d@student.vinci.be', 'VIN');
 --create user
-CREATE USER joachim WITH PASSWORD '1234';
-CREATE USER etudiant WITH PASSWORD '4321';
+--CREATE USER joachim WITH PASSWORD '1234';
+--CREATE USER etudiant WITH PASSWORD '4321';
 
 
 -- CREATE USER
@@ -609,10 +576,10 @@ CREATE USER etudiant WITH PASSWORD '4321';
 
 GRANT CONNECT ON DATABASE postgres TO joachime;
 GRANT USAGE ON SCHEMA projet TO joachime;
-GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO joachime;
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.offreNonValidee, projet.offresValidees, projet.etudiantsSansStage, projet.offresStagesAttribuees TO joachime;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
-GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachime;
-GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachime;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage, projet.entreprises, projet.mots_cles TO joachime;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.mots_cles_id_mot_cle_seq TO joachime;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
