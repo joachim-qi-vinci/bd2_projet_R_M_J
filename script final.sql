@@ -207,6 +207,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 --APP PROFESSEUR 6.
 
 CREATE VIEW projet.offresValidees AS
@@ -319,6 +320,8 @@ BEGIN
 
 END ;
 $$ LANGUAGE plpgsql;
+
+--SELECT projet.poserCandidature(1, 'ULB4', 'coucou c est greg');
 -- APP ETUDIANT 4.
 
 CREATE VIEW projet.mesCandidatures AS
@@ -367,18 +370,16 @@ CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.offres_stag
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerInsertOffreDeStage();
 
 
-CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre projet.semestre_de_stage) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre CHAR(2)) RETURNS VOID AS $$
 DECLARE
     nbrStage INTEGER;
 BEGIN
     SELECT COUNT(os.id_offre_stage)
     FROM projet.offres_stage os
     WHERE os.entreprise = id_entreprise INTO nbrStage;
-    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre);
+    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre::projet.semestre_de_stage);
 END;
 $$ LANGUAGE plpgsql;
-
-SELECT projet.encoderOffreDeStage('ULB', 'coucou', 'Q2');
 
 
 --APP entreprise 2.
@@ -386,9 +387,6 @@ SELECT projet.encoderOffreDeStage('ULB', 'coucou', 'Q2');
 CREATE VIEW projet.voirMotsCles AS
 SELECT DISTINCT mc.intitule
 FROM projet.mots_cles mc;
-
-SELECT * FROM projet.voirMotsCles;
-
 
 
 --APP entreprise 3.
@@ -443,8 +441,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT projet.ajouterUnMotCleOffreDeStage('ULB1','','ULB');
-
 
 --APP ENTREPRISE 4.
 
@@ -460,9 +456,6 @@ FROM   candidatures_en_attente cea, projet.offres_stage os
                                         LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
                                         LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
 WHERE cea.id_offre_stage = os.id_offre_stage;
-
-select * FROM projet.mesOffres WHERE entreprise = 'ULB';
-
 
 
 --APPLICATION ENTREPRISE 5
@@ -501,7 +494,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---SELECT projet.voirLesCandidaturesOffre('ULB1','ULB');
 
 --APP ENTREPRISE 6
 /*
@@ -571,10 +563,6 @@ END;
 $$ LANGUAGE plpgsql;
 
 
---input correct
-SELECT projet.selectionnerEtudiantPourUneOffreDeStage('ULB1', 'j.d@student.vinci.be', 'ULB');
-
-
 --APP ENTREPRISE 7
 /*Annuler une offre de stage en donnant son code. Cette opération ne pourra être
 réalisée que si l’offre appartient bien à l’entreprise et si elle n’est pas encore attribuée,
@@ -609,11 +597,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---SELECT projet.annulerOffreStage('SAM2');
-
-
---SELECT * FROM projet.mesOffres WHERE entreprise = 'VIN';
-
 
 --create user
 CREATE USER joachim WITH PASSWORD '1234';
@@ -633,8 +616,4 @@ GRANT INSERT ON TABLE projet.etudiants TO joachim;
 
 --grant for etudiant
 
-
-SELECT e.*
-FROM projet.entreprises e
-WHERE e.id_entreprise = 'ulb' AND e.mpd = '1234'
 
