@@ -272,8 +272,8 @@ GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage,
 
 CREATE OR REPLACE FUNCTION projet.triggerPoserCandidature() RETURNS TRIGGER AS $$
 DECLARE
-    etudiant_semestre semestre_de_stage;
-    offre_semestre semestre_de_stage;
+    etudiant_semestre projet.semestre_de_stage;
+    offre_semestre projet.semestre_de_stage;
 BEGIN
     IF EXISTS(SELECT ca.etudiant --, ca.offre_stage, ca.motivation, ca.etat, ca.etudiant, ca.offre_stage,
               FROM projet.candidatures ca
@@ -455,6 +455,8 @@ FROM   candidatures_en_attente cea, projet.offres_stage os
                                         LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
 WHERE cea.id_offre_stage = os.id_offre_stage;
 
+select * FROM projet.mesOffres WHERE entreprise = 'VIN';
+
 
 
 --APPLICATION ENTREPRISE 5
@@ -539,21 +541,32 @@ $$ LANGUAGE plpgsql;
 --SELECT projet.annulerOffreStage('SAM2');
 
 
--- CREATE USER
---CREATE USER entreprise WITH PASSWORD '1234';
---CREATE USER etudiant WITH PASSWORD '4321';
+-- CREATE USER entreprise
+CREATE USER "UCL" WITH PASSWORD '1234';
+CREATE USER "Vinci" WITH PASSWORD '1234';
+
+--create user etudiant
+CREATE USER r WITH PASSWORD '1234';
+CREATE USER "Marc Du" WITH PASSWORD '1234';
+CREATE USER "Luc Pe" WITH PASSWORD '1234';
+
+GRANT CONNECT ON DATABASE postgres TO "UCL","Vinci","Jean De", "Marc Du", "Luc Pe";
+GRANT USAGE ON SCHEMA projet TO "UCL","Vinci","Jean De", "Marc Du", "Luc Pe";
+
+-- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables pour l'application entreprise
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.mesOffres TO "UCL","Vinci";
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO "UCL","Vinci";
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO "UCL","Vinci";
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO "UCL","Vinci";
+
+-- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables pour l'application étudiant
+GRANT SELECT ON projet.candidatures, projet.offres_stage, projet.entreprises, projet.mots_cles, projet.mots_cles_offre_stage, projet.etudiants TO "Jean De", "Marc Du", "Luc Pe";;
+GRANT UPDATE ON projet.candidatures TO "Jean De", "Marc Du", "Luc Pe";;
+GRANT INSERT ON projet.candidatures TO "Jean De", "Marc Du", "Luc Pe";;
+
+SELECT * FROM projet.mesOffres WHERE entreprise = 'VIN';
 
 
-GRANT CONNECT ON DATABASE postgres TO entreprise;
-GRANT USAGE ON SCHEMA projet TO entreprise;
--- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables d'un schéma
-GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO entreprise;
-GRANT UPDATE ON projet.offres_stage, projet.candidatures TO entreprise;
-GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO entreprise;
-GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO entreprise;
 
-GRANT CONNECT ON DATABASE postgres TO etudiant;
-GRANT SELECT ON projet.candidatures, projet.offres_stage, projet.entreprises, projet.mots_cles, projet.mots_cles_offre_stage, projet.etudiants TO etudiant;
-GRANT UPDATE ON projet.candidatures TO etudiant;
-GRANT INSERT ON projet.candidatures TO etudiant;
+
 
