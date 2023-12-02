@@ -124,7 +124,6 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_ajout_etudiant BEFORE INSERT ON projet.etudiants
     FOR EACH ROW EXECUTE PROCEDURE projet.trigger();
-
 CREATE OR REPLACE FUNCTION projet.encoderEtudiant(nom_etudiant VARCHAR(40), prenom_etudiant VARCHAR(40), mail_etudiant VARCHAR(50),
                                                   semestre_stage projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
 DECLARE

@@ -10,9 +10,9 @@ CREATE TABLE projet.etudiants
 (
     id_etudiant SERIAL PRIMARY KEY NOT NULL,
     nom VARCHAR(40) NOT NULL
-        CHECK (nom <> ''),
+        CHECK (nom != ''),
     prenom VARCHAR(40) NOT NULL
-        CHECK (prenom <> ''),
+        CHECK (prenom != ''),
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL ,
@@ -541,31 +541,26 @@ $$ LANGUAGE plpgsql;
 --SELECT projet.annulerOffreStage('SAM2');
 
 
--- CREATE USER entreprise
-CREATE USER "UCL" WITH PASSWORD '1234';
-CREATE USER "Vinci" WITH PASSWORD '1234';
+--SELECT * FROM projet.mesOffres WHERE entreprise = 'VIN';
 
---create user etudiant
-CREATE USER r WITH PASSWORD '1234';
-CREATE USER "Marc Du" WITH PASSWORD '1234';
-CREATE USER "Luc Pe" WITH PASSWORD '1234';
 
-GRANT CONNECT ON DATABASE postgres TO "UCL","Vinci","Jean De", "Marc Du", "Luc Pe";
-GRANT USAGE ON SCHEMA projet TO "UCL","Vinci","Jean De", "Marc Du", "Luc Pe";
+--create user
+CREATE USER joachim WITH PASSWORD '1234';
+CREATE USER etudiant WITH PASSWORD '4321';
 
--- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables pour l'application entreprise
-GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.mesOffres TO "UCL","Vinci";
-GRANT UPDATE ON projet.offres_stage, projet.candidatures TO "UCL","Vinci";
-GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO "UCL","Vinci";
-GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO "UCL","Vinci";
+--connect both on database
+GRANT CONNECT ON DATABASE postgres TO joachim, etudiant;
+GRANT USAGE ON SCHEMA projet TO joachim, etudiant;
 
--- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables pour l'application étudiant
-GRANT SELECT ON projet.candidatures, projet.offres_stage, projet.entreprises, projet.mots_cles, projet.mots_cles_offre_stage, projet.etudiants TO "Jean De", "Marc Du", "Luc Pe";;
-GRANT UPDATE ON projet.candidatures TO "Jean De", "Marc Du", "Luc Pe";;
-GRANT INSERT ON projet.candidatures TO "Jean De", "Marc Du", "Luc Pe";;
+--grant for joachim(entreprise)
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO joachim;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
+GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
+GRANT INSERT ON TABLE projet.etudiants TO joachim;
 
-SELECT * FROM projet.mesOffres WHERE entreprise = 'VIN';
-
+--grant for etudiant
 
 
 
