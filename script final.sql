@@ -206,6 +206,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 --APP PROFESSEUR 6.
 
 CREATE VIEW projet.offresValidees AS
@@ -250,17 +251,17 @@ group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage,
 --APP ÉTUDIANT 2.
 
 CREATE OR REPLACE VIEW projet.voirOffresParMotsCles AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
+SELECT  et.id_etudiant,os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
 FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
   AND mcos.offre_stage=os.id_offre_stage
   AND mcos.mot_cle=mc.id_mot_cle
-GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant,mc.intitule;
+GROUP BY et.id_etudiant, os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description, mc.intitule;
 
 
-
+SELECT o.code_offre_stage,o.entreprise,o.semestre_offre,o.nom,o.adresse,o.description,o.mots_cles FROM projet.voirOffresParMotsCles o WHERE o.id_etudiant=2 AND o.intitule = 'Java';
 
 --APP ÉTUDIANT 3.
 --Poser sa candidature. Pour cela, il doit donner le code de l’offre de stage et donner ses
@@ -271,8 +272,8 @@ GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage,
 
 CREATE OR REPLACE FUNCTION projet.triggerPoserCandidature() RETURNS TRIGGER AS $$
 DECLARE
-    etudiant_semestre semestre_de_stage;
-    offre_semestre semestre_de_stage;
+    etudiant_semestre projet.semestre_de_stage;
+    offre_semestre projet.semestre_de_stage;
 BEGIN
     IF EXISTS(SELECT ca.etudiant --, ca.offre_stage, ca.motivation, ca.etat, ca.etudiant, ca.offre_stage,
               FROM projet.candidatures ca
@@ -318,6 +319,8 @@ BEGIN
 
 END ;
 $$ LANGUAGE plpgsql;
+
+--SELECT projet.poserCandidature(1, 'ULB4', 'coucou c est greg');
 -- APP ETUDIANT 4.
 
 CREATE VIEW projet.mesCandidatures AS
@@ -366,14 +369,14 @@ CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.offres_stag
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerInsertOffreDeStage();
 
 
-CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre projet.semestre_de_stage) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre CHAR(2)) RETURNS VOID AS $$
 DECLARE
     nbrStage INTEGER;
 BEGIN
     SELECT COUNT(os.id_offre_stage)
     FROM projet.offres_stage os
     WHERE os.entreprise = id_entreprise INTO nbrStage;
-    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre);
+    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre::projet.semestre_de_stage);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -383,7 +386,6 @@ $$ LANGUAGE plpgsql;
 CREATE VIEW projet.voirMotsCles AS
 SELECT DISTINCT mc.intitule
 FROM projet.mots_cles mc;
-
 
 
 --APP entreprise 3.
@@ -439,6 +441,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
+
 --APP ENTREPRISE 4.
 
 CREATE VIEW projet.mesOffres AS
@@ -453,7 +456,6 @@ FROM   candidatures_en_attente cea, projet.offres_stage os
                                         LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
                                         LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
 WHERE cea.id_offre_stage = os.id_offre_stage;
-
 
 
 --APPLICATION ENTREPRISE 5
@@ -493,13 +495,73 @@ END;
 $$ LANGUAGE plpgsql;
 
 
-
-
---APP ENTREPRISE 7
-/*Annuler une offre de stage en donnant son code. Cette opération ne pourra être
-réalisée que si l’offre appartient bien à l’entreprise et si elle n’est pas encore attribuée,
-ni annulée. Toutes les candidatures en attente de cette offre passeront à « refusée ».
+--APP ENTREPRISE 6
+/*
+ 6. Sélectionner un étudiant pour une de ses offres de stage. Pour cela, l’entreprise devra
+donner le code de l’offre et l’adresse mail de l’étudiant. L’opération échouera si l’offre
+de stage n’est pas une offre de l’entreprise, si l’offre n’est pas dans l’état « validée »
+ou que la candidature n’est pas dans l’état « en attente ». L’état de l’offre passera à
+« attribuée ». La candidature de l’étudiant passera à l’état « acceptée ». Les autres
+candidatures en attente de cet étudiant passeront à l’état « annulée ». Les autres
+candidatures en attente d’étudiants pour cette offre passeront à « refusée ». Si
+l’entreprise avait d’autres offres de stage non annulées durant ce semestre, l’état de
+celles-ci doit passer à « annulée » et toutes les candidatures en attente de ces offres
+passeront à « refusée »
  */
+
+CREATE OR REPLACE FUNCTION projet.trigger_refuser_candidature_en_attente() RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.etat = 'annulée' AND OLD.etat != 'annulée') THEN UPDATE projet.candidatures c SET etat = 'refusée' WHERE c.etat = 'en attente' AND NEW.id_offre_stage = c.offre_stage;
+    END IF;
+
+RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_refuser_candidature_en_attente AFTER UPDATE ON projet.offres_stage
+    FOR EACH ROW EXECUTE PROCEDURE projet.trigger_refuser_candidature_en_attente();
+
+
+CREATE OR REPLACE FUNCTION projet.selectionnerEtudiantPourUneOffreDeStage(code_offre_stage_atribuee VARCHAR(5), adresse_email_etudiant VARCHAR(50), entreprise_app CHAR(3)) RETURNS VOID AS $$
+DECLARE
+    offre_attribuee RECORD;
+    candidature_acceptee RECORD;
+    etudiant_accepte RECORD;
+BEGIN
+    SELECT os.*
+    FROM projet.offres_stage os
+    WHERE os.code_offre_stage = code_offre_stage_atribuee INTO offre_attribuee;
+
+    SELECT e.*
+    FROM projet.etudiants e
+    WHERE e.mail = adresse_email_etudiant INTO etudiant_accepte;
+
+    SELECT c.*
+    FROM projet.candidatures c
+    WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etudiant = etudiant_accepte.id_etudiant INTO candidature_acceptee;
+
+    IF(offre_attribuee.entreprise != entreprise_app) THEN RAISE 'L''offre n''est pas une offre de l''entreprise';
+    END IF;
+
+    IF(offre_attribuee.etat != 'validée') THEN RAISE 'L''offre n''est pas dans l''état validée';
+    END IF;
+
+    IF(candidature_acceptee.etat != 'en attente') THEN RAISE 'La candidature n''est pas dans l''état en attente';
+    END IF;
+
+    -- change l'état de l'offre en attribuée
+    UPDATE projet.offres_stage os SET etat='attribuée' WHERE os.code_offre_stage = offre_attribuee.code_offre_stage;
+    -- change l'état de la candidature de l'étudiant en acceptée
+    UPDATE projet.candidatures c SET etat='acceptée' WHERE c.etudiant = etudiant_accepte.id_etudiant AND c.offre_stage = offre_attribuee.id_offre_stage;
+    -- change l'état de toutes les autres candidatures de l'étudiant en annulée
+    UPDATE projet.candidatures c SET etat='annulée' WHERE c.etudiant = etudiant_accepte.id_etudiant AND c.etat = 'en attente';
+    --change l'état de toutes les candidatures des autres étudiants pour cette offre de stage en refusée
+    UPDATE projet.candidatures c SET etat='refusée' WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etat = 'en attente';
+    --
+    UPDATE projet.offres_stage os SET etat='annulée' WHERE os.entreprise = entreprise_app AND os.etat != 'annulée' and os.semestre_offre = offre_attribuee.semestre_offre AND os.id_offre_stage != offre_attribuee.id_offre_stage;
+END;
+$$ LANGUAGE plpgsql;
+
 
 --APP ENTREPRISE 7
 /*Annuler une offre de stage en donnant son code. Cette opération ne pourra être
@@ -535,7 +597,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
---SELECT projet.annulerOffreStage('SAM2');
+
+--create user
+CREATE USER joachim WITH PASSWORD '1234';
+CREATE USER etudiant WITH PASSWORD '4321';
 
 
 -- CREATE USER
@@ -551,17 +616,19 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joach
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
+--connect both on database
+GRANT CONNECT ON DATABASE postgres TO joachim, etudiant;
+GRANT USAGE ON SCHEMA projet TO joachim, etudiant;
 
-GRANT CONNECT ON DATABASE postgres TO entreprise;
-GRANT USAGE ON SCHEMA projet TO entreprise;
--- Attribuer des droits SELECT, INSERT, UPDATE sur toutes les tables d'un schéma
-GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants TO entreprise;
-GRANT UPDATE ON projet.offres_stage, projet.candidatures TO entreprise;
-GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO entreprise;
-GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO entreprise;
+--grant for joachim(entreprise)
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO joachim;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
+GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
+GRANT INSERT ON TABLE projet.etudiants TO joachim;
 
-GRANT CONNECT ON DATABASE postgres TO etudiant;
-GRANT SELECT ON projet.candidatures, projet.offres_stage, projet.entreprises, projet.mots_cles, projet.mots_cles_offre_stage, projet.etudiants TO etudiant;
-GRANT UPDATE ON projet.candidatures TO etudiant;
-GRANT INSERT ON projet.candidatures TO etudiant;
+
+--grant for etudiant
+
 
