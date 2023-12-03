@@ -336,14 +336,14 @@ CREATE TRIGGER trigger_insert_offre_de_stage BEFORE INSERT ON projet.offres_stag
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerInsertOffreDeStage();
 
 
-CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre CHAR(2)) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION projet.encoderOffreDeStage(id_entreprise CHAR(3), description_offre VARCHAR(200), semestre projet.semestre_de_stage) RETURNS VOID AS $$
 DECLARE
     nbrStage INTEGER;
 BEGIN
     SELECT COUNT(os.id_offre_stage)
     FROM projet.offres_stage os
     WHERE os.entreprise = id_entreprise INTO nbrStage;
-    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre::projet.semestre_de_stage);
+    INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES (id_entreprise, id_entreprise || nbrStage + 1, description_offre, semestre);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -571,7 +571,7 @@ SELECT projet.selectionnerEtudiantPourUneOffreDeStage('VIN1', 'j.d@student.vinci
 
 
 -- CREATE USER
---CREATE USER joachime WITH PASSWORD '1234';
+CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
 GRANT CONNECT ON DATABASE postgres TO joachime;
