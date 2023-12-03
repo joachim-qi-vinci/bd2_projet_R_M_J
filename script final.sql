@@ -95,8 +95,8 @@ INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (3,1);
 INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (5,1);
 
 --INSERT INTO CANDIDATURES
-INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 4, 'jean adore leonard');
-INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 3, 'Chinese Gang');
+INSERT INTO projet.candidatures(etudiant, offre_stage, motivation, etat) VALUES (1, 4, 'jean adore leonard','acceptée');
+INSERT INTO projet.candidatures(etudiant, offre_stage, motivation, etat) VALUES (1, 3, 'Chinese Gang', 'en attente');
 
 
 --APP PROFESSEUR 1.
@@ -192,13 +192,27 @@ WHERE et.id_etudiant NOT IN (SELECT c.etudiant
 --APP PROFESSEUR 8. A REVOIR !
 
 CREATE VIEW projet.offresStagesAttribuees AS
-SELECT os.code_offre_stage AS code_offre_de_stage, e.nom AS entreprise, et.nom, et.prenom
-FROM projet.offres_stage os, projet.entreprises e, projet.etudiants et, projet.candidatures c
-WHERE e.id_entreprise = os.entreprise AND c.offre_stage = os.id_offre_stage AND c.etudiant = et.id_etudiant
-  AND os.etat = 'attribuée'
-ORDER BY et.id_etudiant;
+SELECT
+    os.code_offre_stage,
+    os.entreprise,
+    e.nom AS nom_etudiant,
+    e.prenom AS prenom_etudiant
+FROM
+    projet.offres_stage os
+        JOIN
+    projet.candidatures ca ON os.id_offre_stage = ca.offre_stage
+        JOIN
+    projet.etudiants e ON ca.etudiant = e.id_etudiant;
 
 SELECT * FROM projet.offresStagesAttribuees;
+
+
+WITH candidatures_en_attente AS (
+    SELECT os.id_offre_stage ,COUNT(c.etudiant) AS nb_candidatures_attente
+    FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
+        AND c.offre_stage = os.id_offre_stage
+        AND c.etat = 'en attente'
+    GROUP BY os.id_offre_stage)
 
 SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
 
@@ -306,7 +320,7 @@ BEGIN
     IF (OLD.etat !='en attente')
     THEN RAISE 'la candidature doit être en attente pourpouvoir être annulée';
     END IF;
-RETURN NEW;
+    RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
@@ -481,7 +495,7 @@ BEGIN
     IF (NEW.etat = 'annulée' AND OLD.etat != 'annulée') THEN UPDATE projet.candidatures c SET etat = 'refusée' WHERE c.etat = 'en attente' AND NEW.id_offre_stage = c.offre_stage;
     END IF;
 
-RETURN NEW;
+    RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
