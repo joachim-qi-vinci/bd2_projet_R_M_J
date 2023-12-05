@@ -37,7 +37,7 @@ CREATE TABLE projet.entreprises
         CHECK (adresse <> ''),
     mail VARCHAR(60) NOT NULL,
     CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
-    mpd VARCHAR(100) NOT NULL,
+    mdp VARCHAR(100) NOT NULL,
     CONSTRAINT entreprise_adresse_mail UNIQUE (nom, adresse, mail)
 );
 
