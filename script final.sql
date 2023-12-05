@@ -16,7 +16,7 @@ CREATE TABLE projet.etudiants
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL ,
-    mdp VARCHAR(20) NOT NULL,
+    mdp VARCHAR(100) NOT NULL,
     nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT nom_prenom UNIQUE (nom, prenom)
 );
@@ -24,7 +24,7 @@ CREATE TABLE projet.etudiants
 CREATE TABLE projet.mots_cles
 (
     id_mot_cle SERIAL PRIMARY KEY NOT NULL,
-    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '') UNIQUE
+    intitule VARCHAR(50) NOT NULL CHECK (intitule <> '') UNIQUE
 );
 
 CREATE TABLE projet.entreprises
@@ -70,8 +70,8 @@ CREATE TABLE projet.mots_cles_offre_stage
 );
 
 --INSERT INTO ETUDIANTS
-INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('De', 'Jean', 'j.d@student.vinci.be', 'Q2', '1234');
-INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Du', 'Marc', 'm.d@student.vinci.be', 'Q1', '1234');
+INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('De', 'Jean', 'j.d@student.vinci.be', 'Q2', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Du', 'Marc', 'm.d@student.vinci.be', 'Q1', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
 
 --INSERT INTO MOTS-CLES
 INSERT INTO projet.mots_cles(intitule) VALUES ('Java');
@@ -79,8 +79,8 @@ INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
 INSERT INTO projet.mots_cles(intitule) VALUES ('Python');
 
 --INSERT INTO ENTREPRISES
-INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '1234');
-INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '$2a$10$nJfR3DAZ4WFBHgspUGxWXeqP/BsL1YO.99dTk0Y/RyaWV7SECyv.e');
+INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
 
 --INSERT INTO OFFRE_STAGE
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN1', 'stage SAP', 'Q2','validée');
@@ -101,7 +101,7 @@ INSERT INTO projet.candidatures(etudiant, offre_stage, motivation, etat) VALUES 
 
 --APP PROFESSEUR 1.
 CREATE OR REPLACE FUNCTION projet.encoderEtudiant(nom_etudiant VARCHAR(40), prenom_etudiant VARCHAR(40), mail_etudiant VARCHAR(50),
-                                                  semestre projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
+                                                  semestre projet.semestre_de_stage,mdp_etudiant VARCHAR(100)) RETURNS VOID AS $$
 DECLARE
 BEGIN
     INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES (nom_etudiant, prenom_etudiant, mail_etudiant, semestre, mdp_etudiant);
@@ -111,7 +111,7 @@ $$ LANGUAGE plpgsql;
 --APP PROFESSEUR 2.
 
 CREATE OR REPLACE FUNCTION projet.encoderEntreprise(nom_entreprise VARCHAR(40), adresse_entreprise VARCHAR(100), mail_entreprise VARCHAR(60),
-                                                    identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(20)) RETURNS VOID AS $$
+                                                    identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(100)) RETURNS VOID AS $$
 DECLARE
 BEGIN
     INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mpd)
@@ -189,8 +189,7 @@ WHERE et.id_etudiant NOT IN (SELECT c.etudiant
                              FROM projet.candidatures c
                              WHERE et.id_etudiant = c.etudiant AND c.etat = 'acceptée');
 
---APP PROFESSEUR 8. A REVOIR !
-
+--APP PROFESSEUR 8.
 CREATE VIEW projet.offresStagesAttribuees AS
 SELECT
     os.code_offre_stage,
@@ -204,11 +203,8 @@ FROM
         JOIN
     projet.etudiants e ON ca.etudiant = e.id_etudiant;
 
-SELECT * FROM projet.offresStagesAttribuees;
-
-
 WITH candidatures_en_attente AS (
-    SELECT os.id_offre_stage ,COUNT(c.etudiant) AS nb_candidatures_attente
+    SELECT os.id_offre_stage, COUNT(c.etudiant) AS nb_candidatures_attente
     FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
         AND c.offre_stage = os.id_offre_stage
         AND c.etat = 'en attente'
@@ -219,26 +215,22 @@ SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
 --APP ÉTUDIANT 1.
 
 CREATE OR REPLACE VIEW projet.voirOffresValideesSemestre AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
-FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description, string_agg(mc.intitule,',' ) AS mots_cles
+FROM projet.etudiants et, projet.entreprises en, projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
-  AND mcos.offre_stage=os.id_offre_stage
-  AND mcos.mot_cle=mc.id_mot_cle
-group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant, os.semestre_offre;
+GROUP BY et.id_etudiant,os.code_offre_stage, os.entreprise,os.semestre_offre,en.nom, en.adresse, os.description;
 
 
 --APP ÉTUDIANT 2.
 
 CREATE OR REPLACE VIEW projet.voirOffresParMotsCles AS
 SELECT  et.id_etudiant,os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
-FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+FROM projet.entreprises en,projet.etudiants et,projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
-  AND mcos.offre_stage=os.id_offre_stage
-  AND mcos.mot_cle=mc.id_mot_cle
 GROUP BY et.id_etudiant, os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description, mc.intitule;
 
 
@@ -583,17 +575,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
  --create user
 --CREATE USER joachim WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
 
 -- CREATE USER
-CREATE USER joachime WITH PASSWORD '1234';
+--CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
-
-GRANT CONNECT ON DATABASE postgres TO joachime;
-GRANT USAGE ON SCHEMA projet TO joachime;
+/*
+GRANT CONNECT ON DATABASE dbjoachimqi TO mariomargjini, robinsalle;
+GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.offreNonValidee, projet.offresValidees, projet.etudiantsSansStage, projet.offresStagesAttribuees TO joachime;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage, projet.entreprises, projet.mots_cles TO joachime;
@@ -601,9 +594,7 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
---connect both on database
-GRANT CONNECT ON DATABASE postgres TO joachim, etudiant;
-GRANT USAGE ON SCHEMA projet TO joachim, etudiant;
+
 
 --grant for joachim(entreprise)
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO joachim;
@@ -611,9 +602,20 @@ GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
-GRANT INSERT ON TABLE projet.etudiants TO joachim;
+*/
 
+--GRANT CONNECT & USAGE ON DATABASE & SCHEMA
+GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
+GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
 
---grant for etudiant
+--GRANT ETUDIANT (MARIO)
+GRANT SELECT ON projet.etudiants, projet.entreprises, projet.offres_stage, projet.mots_cles_offre_stage, projet.mots_cles, projet.candidatures, projet.voirOffresValideesSemestre, projet.voirOffresParMotsCles, projet.mesCandidatures TO mariomargjini;
+GRANT UPDATE ON projet.candidatures TO mariomargjini;
+GRANT INSERT ON projet.candidatures TO mariomargjini;
 
+--GRANT ENTREPRISE (ROBIN)
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO robinsalle;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO robinsalle;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO robinsalle;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.etudiants_id_etudiant_seq TO robinsalle;
 

@@ -1,15 +1,28 @@
 package org.example;
 
+import org.example.utils.BCrypt;
+
 import java.sql.*;
 import java.util.Scanner;
 
 public class GestionStage {
 
     Connection conn = null;
-    private static final MonScanner scannerTest = new MonScanner("test.txt");
-    private static final MonScanner scannerTest2 = new MonScanner("test2.txt");
-    private static final MonScanner scannerTest3 = new MonScanner("test3.txt");
-    private static final MonScanner scannerTest4 = new MonScanner("test4.txt");
+     private PreparedStatement encoderEtudiantStatement;
+     private PreparedStatement encoderEntrepriseStatement;
+     private PreparedStatement encoderMotCleStatement;
+     private PreparedStatement voirOffreNonValideStatement;
+     private PreparedStatement validerOffreDeStageStatement ;
+     private PreparedStatement voirOffreValidesStatement;
+
+     private PreparedStatement voirSansStagesStatement;
+     private PreparedStatement voirStagesAttribuesStatement ;
+     private static MonScanner scannerTest = new MonScanner("test.txt");
+     private static MonScanner scannerTest2 = new MonScanner("test2.txt");
+     private static MonScanner scannerTest3 = new MonScanner("test3.txt");
+     private static MonScanner scannerTest4 = new MonScanner("test4.txt");
+
+
 
 
     public GestionStage() {
@@ -29,6 +42,18 @@ public class GestionStage {
             System.out.println("Impossible de joindre le server !");
             System.exit(1);
         }
+        try {
+            encoderEtudiantStatement = conn.prepareStatement("SELECT projet.encoderEtudiant(?, ?, ?, ?, ?)");
+            encoderEntrepriseStatement = conn.prepareStatement("SELECT projet.encoderEntreprise(?, ?, ?, ?, ?)");
+            encoderMotCleStatement = conn.prepareStatement("SELECT projet.encoderMotCle(?)");
+            voirOffreNonValideStatement = conn.prepareStatement("SELECT * FROM projet.offreNonValidee");
+            validerOffreDeStageStatement = conn.prepareStatement("SELECT projet.validerOffreDeStage(?)");
+            voirOffreValidesStatement = conn.prepareStatement("SELECT * FROM projet.offresValidees");
+            voirSansStagesStatement = conn.prepareStatement("SELECT * FROM projet.etudiantsSansStage");
+            voirStagesAttribuesStatement = conn.prepareStatement("SELECT * FROM projet.offresStagesAttribuees ");
+        }catch (SQLException e){
+            e.printStackTrace();
+        }
     }
 
     public void run() {
@@ -36,6 +61,7 @@ public class GestionStage {
 
         Scanner scanner = new Scanner(System.in);
         Scanner scanner1 = new Scanner(System.in);
+        String sel = BCrypt.gensalt();
 
         int choix = -1;
         while ((choix >= 0 && choix <= 8) || choix == -1) {
@@ -68,26 +94,31 @@ public class GestionStage {
                     String semestre_stage = scannerTest.nextLine();
                     System.out.println("Entrez le mot de passe : ");
                     String mdp = scannerTest.nextLine();
+                    String hashedMdp = BCrypt.hashpw(mdp, sel);
 
-                    encoderEtudiant(nom, prenom, mail, semestre_stage, mdp);
+                    encoderEtudiant(nom, prenom, mail, semestre_stage, hashedMdp);
                     System.out.println("Etudiant ajouté");
                     break;
 
                 case 2:
                     System.out.println("Encoder une nouvelle entreprise");
                     System.out.println("Entrez le nom d'entreprise :");
-                    String nom_en = scannerTest2.nextLine();
+                    String nom_en = scanner1.nextLine();
                     System.out.println("Entrez l'adresse de l'entreprise : ");
-                    String adresse = scannerTest2.nextLine();
+                    String adresse = scanner1.nextLine();
                     System.out.println("Entrez l'adresse mail de l'entreprise: ");
-                    String mail_en = scannerTest2.nextLine();
+                    String mail_en = scanner1.nextLine();
                     System.out.println("Entrez un identifiant de 3 lettre pour l'entreprise : ");
-                    String id_entreprise = scannerTest2.nextLine();
+                    String id_entreprise = scanner1.nextLine();
                     System.out.println("Entrez le mot de passe : ");
-                    String mdp_en = scannerTest2.nextLine();
+                    String mdp_en = scanner1.nextLine();
+                    String hashedMdp_en = BCrypt.hashpw(mdp_en, sel);
+                    if (encoderEntreprise(nom_en, adresse, mail_en, id_entreprise, hashedMdp_en)){
+                        System.out.println("Entreprise ajoutée");
+                    }else{
+                        System.out.println("Echec de l'ajout");
+                    }
 
-                    encoderEntreprise(nom_en, adresse, mail_en, id_entreprise, mdp_en);
-                    System.out.println("Entreprise ajoutée");
                     break;
                 case 3:
                     System.out.println("Encoder un mot-clé");
@@ -132,14 +163,14 @@ public class GestionStage {
 
     public boolean encoderEtudiant(String nom, String prenom, String mail, String semestre_stage, String mdp) {
         try {
-            PreparedStatement ps = conn.prepareStatement("SELECT projet.encoderEtudiant(?, ?, ?, ?, ?)");
-            ps.setString(1, nom);
-            ps.setString(2, prenom);
-            ps.setString(3, mail);
-            ps.setObject(4, semestre_stage, java.sql.Types.OTHER);
 
-            ps.setString(5, mdp);
-            boolean success = ps.execute();
+            encoderEtudiantStatement.setString(1, nom);
+            encoderEtudiantStatement.setString(2, prenom);
+            encoderEtudiantStatement.setString(3, mail);
+            encoderEtudiantStatement.setObject(4, semestre_stage, java.sql.Types.OTHER);
+
+            encoderEtudiantStatement.setString(5, mdp);
+            boolean success = encoderEtudiantStatement.execute();
 
             return success;
         } catch (SQLException se) {
@@ -150,14 +181,13 @@ public class GestionStage {
 
     public boolean encoderEntreprise(String nom, String adresse, String mail, String id_entreprise, String mdp) {
         try {
-            PreparedStatement ps = conn.prepareStatement("SELECT projet.encoderEntreprise(?, ?, ?, ?, ?)");
-            ps.setString(1, nom);
-            ps.setString(2, adresse);
-            ps.setString(3, mail);
-            ps.setString(4, id_entreprise);
-            ps.setString(5, mdp);
+            encoderEntrepriseStatement.setString(1, nom);
+            encoderEntrepriseStatement.setString(2, adresse);
+            encoderEntrepriseStatement.setString(3, mail);
+            encoderEntrepriseStatement.setString(4, id_entreprise);
+            encoderEntrepriseStatement.setString(5, mdp);
 
-            boolean success = ps.execute();
+            boolean success = encoderEntrepriseStatement.execute();
 
             return success;
         } catch (SQLException se) {
@@ -168,10 +198,10 @@ public class GestionStage {
 
     public boolean encoderMotCle(String intituleParam){
         try {
-            PreparedStatement ps = conn.prepareStatement("SELECT projet.encoderMotCle(?)");
-            ps.setString(1, intituleParam);
 
-            boolean success = ps.execute();
+            encoderMotCleStatement.setString(1, intituleParam);
+
+            boolean success = encoderMotCleStatement.execute();
 
             return success;
         } catch (SQLException se) {
@@ -181,16 +211,11 @@ public class GestionStage {
     }
 
     public void offreNonValidee(){
-        int i = 1;
-        try {
-            Statement s = conn.createStatement();
-            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offreNonValidee")){
+        try (ResultSet rs = voirOffreNonValideStatement.executeQuery()) {
                 while(rs.next()) {
                     String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4) + " " + rs.getString(5);
                     System.out.println("Offre n°" + str);
-                    i ++;
                 }
-            }
         } catch (SQLException se) {
             se.printStackTrace();
         }
@@ -198,10 +223,10 @@ public class GestionStage {
 
     public boolean validerOffreDeStage(String code_offre){
         try {
-            PreparedStatement ps = conn.prepareStatement("SELECT projet.validerOffreDeStage(?)");
-            ps.setString(1, code_offre);
 
-            boolean success = ps.execute();
+            validerOffreDeStageStatement.setString(1, code_offre);
+
+            boolean success = validerOffreDeStageStatement.execute();
 
             return success;
         } catch (SQLException se) {
@@ -211,45 +236,34 @@ public class GestionStage {
     }
 
     public void offreValidee(){
-        try {
-            Statement s = conn.createStatement();
-            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offresValidees")){
+        try (ResultSet rs = voirOffreValidesStatement.executeQuery()){
                 while(rs.next()) {
                     String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4) + " " + rs.getString(5);
                     System.out.println("Offre n°" + str);
-
                 }
-            }
         } catch (SQLException se) {
             se.printStackTrace();
         }
     }
 
     public void sansStage(){
-        try {
-            Statement s = conn.createStatement();
-            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offresStagesAttribuees ")){
-                while(rs.next()) {
-                    String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4) + " " + rs.getString(5);
-                    System.out.println("Offre n°" + str);
+        try (ResultSet rs = voirSansStagesStatement.executeQuery()){
+            while(rs.next()) {
+                    String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4) + " " + rs.getString(5) ;
+                    System.out.println(str);
 
                 }
-            }
         } catch (SQLException se) {
             se.printStackTrace();
         }
     }
 
     public void offreAttribuee(){
-        try {
-            Statement s = conn.createStatement();
-            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offresStagesAttribuees ")){
+        try (ResultSet rs = voirStagesAttribuesStatement.executeQuery()){
                 while(rs.next()) {
                     String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4);
-                    System.out.println("Offre n°" + str);
-
+                    System.out.println("Offre : " + str);
                 }
-            }
         } catch (SQLException se) {
             se.printStackTrace();
         }
