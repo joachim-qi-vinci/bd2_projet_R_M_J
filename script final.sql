@@ -203,25 +203,15 @@ FROM
         JOIN
     projet.etudiants e ON ca.etudiant = e.id_etudiant;
 
-WITH candidatures_en_attente AS (
-    SELECT os.id_offre_stage, COUNT(c.etudiant) AS nb_candidatures_attente
-    FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
-        AND c.offre_stage = os.id_offre_stage
-        AND c.etat = 'en attente'
-    GROUP BY os.id_offre_stage)
-
-SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
-
 --APP ÉTUDIANT 1.
 
 CREATE OR REPLACE VIEW projet.voirOffresValideesSemestre AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description, COALESCE(string_agg(mc.intitule,',' )) AS mots_cles
-FROM projet.etudiants et, projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle,projet.entreprises en
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description, string_agg(mc.intitule,',' ) AS mots_cles
+FROM projet.etudiants et, projet.entreprises en, projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
 GROUP BY et.id_etudiant,os.code_offre_stage, os.entreprise,os.semestre_offre,en.nom, en.adresse, os.description;
-
 
 
 --APP ÉTUDIANT 2.
@@ -514,6 +504,9 @@ BEGIN
     FROM projet.candidatures c
     WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etudiant = etudiant_accepte.id_etudiant INTO candidature_acceptee;
 
+    IF (offre_attribuee IS NULL) THEN RAISE 'Ce code ne correspond à aucune offre de stage';
+    END IF;
+
     IF(offre_attribuee.entreprise != entreprise_app) THEN RAISE 'L''offre n''est pas une offre de l''entreprise';
     END IF;
 
@@ -561,17 +554,20 @@ CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
 
 
-CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre VARCHAR(5), entrepriseAPP CHAR(3)) RETURNS VOID AS $$
 DECLARE
     id_offre INTEGER;
 BEGIN
-    SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre INTO id_offre;
+    SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre AND os.entreprise = entrepriseAPP INTO id_offre;
+    IF(id_offre IS NULL) THEN RAISE 'Ce n''est pas une offre de l''entreprise';
+    END IF;
     UPDATE projet.offres_stage os SET etat='annulée' WHERE os.id_offre_stage = id_offre;
 
 END;
 $$ LANGUAGE plpgsql;
 
---create user
+
+ --create user
 --CREATE USER joachim WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
@@ -579,9 +575,9 @@ $$ LANGUAGE plpgsql;
 -- CREATE USER
 --CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
-
-GRANT CONNECT ON DATABASE postgres TO joachime;
-GRANT USAGE ON SCHEMA projet TO joachime;
+/*
+GRANT CONNECT ON DATABASE dbjoachimqi TO mariomargjini, robinsalle;
+GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.offreNonValidee, projet.offresValidees, projet.etudiantsSansStage, projet.offresStagesAttribuees TO joachime;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage, projet.entreprises, projet.mots_cles TO joachime;
@@ -589,9 +585,7 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
---connect both on database
-GRANT CONNECT ON DATABASE postgres TO joachim, etudiant;
-GRANT USAGE ON SCHEMA projet TO joachim, etudiant;
+
 
 --grant for joachim(entreprise)
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO joachim;
@@ -599,6 +593,21 @@ GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
-GRANT INSERT ON TABLE projet.etudiants TO joachim;
+*/
+
+--GRANT CONNECT & USAGE ON DATABASE & SCHEMA
+GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
+GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
+
+--GRANT ETUDIANT (MARIO)
+GRANT SELECT ON projet.etudiants, projet.entreprises, projet.offres_stage, projet.mots_cles_offre_stage, projet.mots_cles, projet.candidatures, projet.voirOffresValideesSemestre, projet.voirOffresParMotsCles, projet.mesCandidatures TO mariomargjini;
+GRANT UPDATE ON projet.candidatures TO mariomargjini;
+GRANT INSERT ON projet.candidatures TO mariomargjini;
+
+--GRANT ENTREPRISE (ROBIN)
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO robinsalle;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO robinsalle;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO robinsalle;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.etudiants_id_etudiant_seq TO robinsalle;
 
 
