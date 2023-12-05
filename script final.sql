@@ -602,6 +602,3 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
 GRANT INSERT ON TABLE projet.etudiants TO joachim;
 
 
---grant for etudiant
-
-
