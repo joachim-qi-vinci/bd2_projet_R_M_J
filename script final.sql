@@ -579,9 +579,9 @@ $$ LANGUAGE plpgsql;
 -- CREATE USER
 --CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
-
-GRANT CONNECT ON DATABASE postgres TO joachime;
-GRANT USAGE ON SCHEMA projet TO joachime;
+/*
+GRANT CONNECT ON DATABASE dbjoachimqi TO mariomargjini, robinsalle;
+GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.offreNonValidee, projet.offresValidees, projet.etudiantsSansStage, projet.offresStagesAttribuees TO joachime;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage, projet.entreprises, projet.mots_cles TO joachime;
@@ -589,9 +589,7 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
---connect both on database
-GRANT CONNECT ON DATABASE postgres TO joachim, etudiant;
-GRANT USAGE ON SCHEMA projet TO joachim, etudiant;
+
 
 --grant for joachim(entreprise)
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO joachim;
@@ -599,9 +597,20 @@ GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
-GRANT INSERT ON TABLE projet.etudiants TO joachim;
+*/
 
+--GRANT CONNECT & USAGE ON DATABASE & SCHEMA
+GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
+GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
 
---grant for etudiant
+--GRANT ETUDIANT (MARIO)
+GRANT SELECT ON projet.etudiants, projet.entreprises, projet.offres_stage, projet.mots_cles_offre_stage, projet.mots_cles, projet.candidatures, projet.voirOffresValideesSemestre, projet.voirOffresParMotsCles, projet.mesCandidatures TO mariomargjini;
+GRANT UPDATE ON projet.candidatures TO mariomargjini;
+GRANT INSERT ON projet.candidatures TO mariomargjini;
 
+--GRANT ENTREPRISE (ROBIN)
+GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO robinsalle;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures TO robinsalle;
+GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO robinsalle;
+GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.etudiants_id_etudiant_seq TO robinsalle;
 
