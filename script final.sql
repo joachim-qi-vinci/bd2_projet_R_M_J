@@ -37,7 +37,7 @@ CREATE TABLE projet.entreprises
         CHECK (adresse <> ''),
     mail VARCHAR(60) NOT NULL,
     CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
-    mpd VARCHAR(20) NOT NULL,
+    mpd VARCHAR(100) NOT NULL,
     CONSTRAINT entreprise_adresse_mail UNIQUE (nom, adresse, mail)
 );
 
@@ -80,7 +80,7 @@ INSERT INTO projet.mots_cles(intitule) VALUES ('Python');
 
 --INSERT INTO ENTREPRISES
 INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '1234');
-INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '1234');
+INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '$2a$10$nJfR3DAZ4WFBHgspUGxWXeqP/BsL1YO.99dTk0Y/RyaWV7SECyv.e');
 
 --INSERT INTO OFFRE_STAGE
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN1', 'stage SAP', 'Q2','validée');
@@ -521,6 +521,9 @@ BEGIN
     FROM projet.candidatures c
     WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etudiant = etudiant_accepte.id_etudiant INTO candidature_acceptee;
 
+    IF (offre_attribuee IS NULL) THEN RAISE 'Ce code ne correspond à aucune offre de stage';
+    END IF;
+
     IF(offre_attribuee.entreprise != entreprise_app) THEN RAISE 'L''offre n''est pas une offre de l''entreprise';
     END IF;
 
@@ -568,18 +571,19 @@ CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
 
 
-CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION projet.annulerOffreStage(code_offre VARCHAR(5), entrepriseAPP CHAR(3)) RETURNS VOID AS $$
 DECLARE
     id_offre INTEGER;
 BEGIN
-    SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre INTO id_offre;
+    SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre AND os.entreprise = entrepriseAPP INTO id_offre;
+    IF(id_offre IS NULL) THEN RAISE 'Ce n''est pas une offre de l''entreprise';
+    END IF;
     UPDATE projet.offres_stage os SET etat='annulée' WHERE os.id_offre_stage = id_offre;
 
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT projet.selectionnerEtudiantPourUneOffreDeStage('VIN1', 'j.d@student.vinci.be', 'VIN');
---create user
+ --create user
 --CREATE USER joachim WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
