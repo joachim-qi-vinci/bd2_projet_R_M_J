@@ -16,7 +16,7 @@ CREATE TABLE projet.etudiants
     mail VARCHAR(50) NOT NULL
         CHECK (mail SIMILAR TO '[a-z]+\.[a-z]+@student\.vinci\.be'),
     semestre_stage projet.semestre_de_stage NOT NULL ,
-    mdp VARCHAR(20) NOT NULL,
+    mdp VARCHAR(100) NOT NULL,
     nbr_candidatures_en_attente INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT nom_prenom UNIQUE (nom, prenom)
 );
@@ -24,7 +24,7 @@ CREATE TABLE projet.etudiants
 CREATE TABLE projet.mots_cles
 (
     id_mot_cle SERIAL PRIMARY KEY NOT NULL,
-    intitule VARCHAR(15) NOT NULL CHECK (intitule <> '') UNIQUE
+    intitule VARCHAR(50) NOT NULL CHECK (intitule <> '') UNIQUE
 );
 
 CREATE TABLE projet.entreprises
@@ -37,7 +37,7 @@ CREATE TABLE projet.entreprises
         CHECK (adresse <> ''),
     mail VARCHAR(60) NOT NULL,
     CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
-    mpd VARCHAR(20) NOT NULL,
+    mpd VARCHAR(100) NOT NULL,
     CONSTRAINT entreprise_adresse_mail UNIQUE (nom, adresse, mail)
 );
 
@@ -70,8 +70,8 @@ CREATE TABLE projet.mots_cles_offre_stage
 );
 
 --INSERT INTO ETUDIANTS
-INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('De', 'Jean', 'j.d@student.vinci.be', 'Q2', '1234');
-INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Du', 'Marc', 'm.d@student.vinci.be', 'Q1', '1234');
+INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('De', 'Jean', 'j.d@student.vinci.be', 'Q2', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Du', 'Marc', 'm.d@student.vinci.be', 'Q1', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
 
 --INSERT INTO MOTS-CLES
 INSERT INTO projet.mots_cles(intitule) VALUES ('Java');
@@ -79,8 +79,8 @@ INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
 INSERT INTO projet.mots_cles(intitule) VALUES ('Python');
 
 --INSERT INTO ENTREPRISES
-INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '1234');
-INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '1234');
+INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
 
 --INSERT INTO OFFRE_STAGE
 INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN1', 'stage SAP', 'Q2','validée');
@@ -101,7 +101,7 @@ INSERT INTO projet.candidatures(etudiant, offre_stage, motivation, etat) VALUES 
 
 --APP PROFESSEUR 1.
 CREATE OR REPLACE FUNCTION projet.encoderEtudiant(nom_etudiant VARCHAR(40), prenom_etudiant VARCHAR(40), mail_etudiant VARCHAR(50),
-                                                  semestre projet.semestre_de_stage,mdp_etudiant VARCHAR(20)) RETURNS VOID AS $$
+                                                  semestre projet.semestre_de_stage,mdp_etudiant VARCHAR(100)) RETURNS VOID AS $$
 DECLARE
 BEGIN
     INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES (nom_etudiant, prenom_etudiant, mail_etudiant, semestre, mdp_etudiant);
@@ -111,7 +111,7 @@ $$ LANGUAGE plpgsql;
 --APP PROFESSEUR 2.
 
 CREATE OR REPLACE FUNCTION projet.encoderEntreprise(nom_entreprise VARCHAR(40), adresse_entreprise VARCHAR(100), mail_entreprise VARCHAR(60),
-                                                    identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(20)) RETURNS VOID AS $$
+                                                    identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(100)) RETURNS VOID AS $$
 DECLARE
 BEGIN
     INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mpd)
@@ -189,8 +189,7 @@ WHERE et.id_etudiant NOT IN (SELECT c.etudiant
                              FROM projet.candidatures c
                              WHERE et.id_etudiant = c.etudiant AND c.etat = 'acceptée');
 
---APP PROFESSEUR 8. A REVOIR !
-
+--APP PROFESSEUR 8.
 CREATE VIEW projet.offresStagesAttribuees AS
 SELECT
     os.code_offre_stage,
@@ -203,9 +202,6 @@ FROM
     projet.candidatures ca ON os.id_offre_stage = ca.offre_stage
         JOIN
     projet.etudiants e ON ca.etudiant = e.id_etudiant;
-
-SELECT * FROM projet.offresStagesAttribuees;
-
 
 WITH candidatures_en_attente AS (
     SELECT os.id_offre_stage ,COUNT(c.etudiant) AS nb_candidatures_attente
@@ -226,7 +222,7 @@ WHERE et.semestre_stage = os.semestre_offre
   AND os.entreprise=en.id_entreprise
   AND mcos.offre_stage=os.id_offre_stage
   AND mcos.mot_cle=mc.id_mot_cle
-group by os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant, os.semestre_offre;
+GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant, os.semestre_offre;
 
 
 --APP ÉTUDIANT 2.
@@ -578,14 +574,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT projet.selectionnerEtudiantPourUneOffreDeStage('VIN1', 'j.d@student.vinci.be', 'VIN');
 --create user
 --CREATE USER joachim WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
 
 -- CREATE USER
-CREATE USER joachime WITH PASSWORD '1234';
+--CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
 GRANT CONNECT ON DATABASE postgres TO joachime;
