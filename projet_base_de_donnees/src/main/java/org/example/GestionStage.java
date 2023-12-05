@@ -228,7 +228,7 @@ public class GestionStage {
     public void sansStage(){
         try {
             Statement s = conn.createStatement();
-            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.etudiantsSansStage")){
+            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offresStagesAttribuees ")){
                 while(rs.next()) {
                     String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4) + " " + rs.getString(5);
                     System.out.println("Offre n°" + str);
@@ -243,9 +243,9 @@ public class GestionStage {
     public void offreAttribuee(){
         try {
             Statement s = conn.createStatement();
-            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offresStagesAttribuees")){
+            try(ResultSet rs= s.executeQuery("SELECT * FROM projet.offresStagesAttribuees ")){
                 while(rs.next()) {
-                    String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4) + " " + rs.getString(5);
+                    String str = rs.getString(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getString(4);
                     System.out.println("Offre n°" + str);
 
                 }
