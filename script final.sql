@@ -231,12 +231,10 @@ group by et.id_etudiant,os.code_offre_stage, os.entreprise,os.semestre_offre,en.
 
 CREATE OR REPLACE VIEW projet.voirOffresParMotsCles AS
 SELECT  et.id_etudiant,os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles, mc.intitule
-FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+FROM projet.entreprises en,projet.etudiants et,projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
-  AND mcos.offre_stage=os.id_offre_stage
-  AND mcos.mot_cle=mc.id_mot_cle
 GROUP BY et.id_etudiant, os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description, mc.intitule;
 
 
