@@ -215,13 +215,12 @@ SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
 --APP ÉTUDIANT 1.
 
 CREATE OR REPLACE VIEW projet.voirOffresValideesSemestre AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description, COALESCE(string_agg(mc.intitule,',' )) AS mots_cles
-FROM projet.etudiants et, projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle,projet.entreprises en
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description, string_agg(mc.intitule,',' ) AS mots_cles
+FROM projet.etudiants et, projet.entreprises en, projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
 GROUP BY et.id_etudiant,os.code_offre_stage, os.entreprise,os.semestre_offre,en.nom, en.adresse, os.description;
-
 
 
 --APP ÉTUDIANT 2.
