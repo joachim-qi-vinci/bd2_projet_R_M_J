@@ -204,7 +204,7 @@ FROM
     projet.etudiants e ON ca.etudiant = e.id_etudiant;
 
 WITH candidatures_en_attente AS (
-    SELECT os.id_offre_stage ,COUNT(c.etudiant) AS nb_candidatures_attente
+    SELECT os.id_offre_stage, COUNT(c.etudiant) AS nb_candidatures_attente
     FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
         AND c.offre_stage = os.id_offre_stage
         AND c.etat = 'en attente'
@@ -215,14 +215,13 @@ SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
 --APP ÉTUDIANT 1.
 
 CREATE OR REPLACE VIEW projet.voirOffresValideesSemestre AS
-SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description,string_agg(mc.intitule,',' )AS mots_cles
-FROM projet.offres_stage os,projet.entreprises en,projet.mots_cles mc,projet.mots_cles_offre_stage mcos,projet.etudiants et
+SELECT  et.id_etudiant, os.code_offre_stage, os.entreprise,os.semestre_offre, en.nom, en.adresse, os.description, COALESCE(string_agg(mc.intitule,',' )) AS mots_cles
+FROM projet.etudiants et, projet.offres_stage os LEFT OUTER JOIN projet.mots_cles_offre_stage mcos ON mcos.offre_stage=os.id_offre_stage LEFT OUTER JOIN projet.mots_cles mc ON mcos.mot_cle=mc.id_mot_cle,projet.entreprises en
 WHERE et.semestre_stage = os.semestre_offre
   AND os.etat = 'validée'
   AND os.entreprise=en.id_entreprise
-  AND mcos.offre_stage=os.id_offre_stage
-  AND mcos.mot_cle=mc.id_mot_cle
-GROUP BY os.description, en.adresse, en.nom, os.entreprise, os.code_offre_stage, et.id_etudiant, os.semestre_offre;
+GROUP BY et.id_etudiant,os.code_offre_stage, os.entreprise,os.semestre_offre,en.nom, en.adresse, os.description;
+
 
 
 --APP ÉTUDIANT 2.
