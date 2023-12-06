@@ -17,11 +17,15 @@ public class GestionStage {
 
      private PreparedStatement voirSansStagesStatement;
      private PreparedStatement voirStagesAttribuesStatement ;
-     private static MonScanner scannerTest = new MonScanner("test.txt");
+
+     /*
+     private static MonScanner scanner1 = new MonScanner("test.txt");
      private static MonScanner scannerTest2 = new MonScanner("test2.txt");
      private static MonScanner scannerTest3 = new MonScanner("test3.txt");
      private static MonScanner scannerTest4 = new MonScanner("test4.txt");
 
+      */
+     private Scanner input = new Scanner(System.in);
 
 
 
@@ -33,10 +37,10 @@ public class GestionStage {
             System.out.println("Driver PostgreSQL manquant !");
             System.exit(1);
         }
-        String url = "jdbc:postgresql://localhost:5432/postgres";
+        String url = "jdbc:postgresql://172.24.2.6:5432/dbjoachimqi";
 
         try {
-            this.conn = DriverManager.getConnection(url, "joachime", "1234");
+            this.conn = DriverManager.getConnection(url, "joachimqi", "DK7H6ZQ5X");
             System.out.println("Vous êtes connecté");
         } catch (SQLException e) {
             System.out.println("Impossible de joindre le server !");
@@ -60,7 +64,7 @@ public class GestionStage {
 
 
         Scanner scanner = new Scanner(System.in);
-        Scanner scanner1 = new Scanner(System.in);
+
         String sel = BCrypt.gensalt();
 
         int choix = -1;
@@ -85,33 +89,36 @@ public class GestionStage {
                     System.out.println("Encoder un nouvel étudiant");
 
                     System.out.println("Entrez le nom : ");
-                    String nom = scannerTest.nextLine();
+                    String nom = input.nextLine();
                     System.out.println("Entrez le prénom : ");
-                    String prenom = scannerTest.nextLine();
+                    String prenom = input.nextLine();
                     System.out.println("Entrez l'adresse mail : ");
-                    String mail = scannerTest.nextLine();
+                    String mail = input.nextLine();
                     System.out.println("Entrez le semestre de stage : ");
-                    String semestre_stage = scannerTest.nextLine();
+                    String semestre_stage = input.nextLine();
                     System.out.println("Entrez le mot de passe : ");
-                    String mdp = scannerTest.nextLine();
+                    String mdp = input.nextLine();
                     String hashedMdp = BCrypt.hashpw(mdp, sel);
 
-                    encoderEtudiant(nom, prenom, mail, semestre_stage, hashedMdp);
-                    System.out.println("Etudiant ajouté");
+                    if (encoderEtudiant(nom, prenom, mail, semestre_stage, hashedMdp)){
+                        System.out.println("Etudiant ajouté");
+                    }else{
+                        System.out.println("Echec de l'ajout");
+                    }
                     break;
 
                 case 2:
                     System.out.println("Encoder une nouvelle entreprise");
                     System.out.println("Entrez le nom d'entreprise :");
-                    String nom_en = scanner1.nextLine();
+                    String nom_en = input.nextLine();
                     System.out.println("Entrez l'adresse de l'entreprise : ");
-                    String adresse = scanner1.nextLine();
+                    String adresse = input.nextLine();
                     System.out.println("Entrez l'adresse mail de l'entreprise: ");
-                    String mail_en = scanner1.nextLine();
+                    String mail_en = input.nextLine();
                     System.out.println("Entrez un identifiant de 3 lettre pour l'entreprise : ");
-                    String id_entreprise = scanner1.nextLine();
+                    String id_entreprise = input.nextLine();
                     System.out.println("Entrez le mot de passe : ");
-                    String mdp_en = scanner1.nextLine();
+                    String mdp_en = input.nextLine();
                     String hashedMdp_en = BCrypt.hashpw(mdp_en, sel);
                     if (encoderEntreprise(nom_en, adresse, mail_en, id_entreprise, hashedMdp_en)){
                         System.out.println("Entreprise ajoutée");
@@ -123,10 +130,13 @@ public class GestionStage {
                 case 3:
                     System.out.println("Encoder un mot-clé");
                     System.out.println("Entrez l'intitulé du mot-clé : ");
-                    String intitule = scannerTest3.nextLine();
+                    String intitule = input.nextLine();
                     //String intitule = scanner1.nextLine();
-                    encoderMotCle(intitule);
-                    System.out.println("Mot clé ajouté");
+                    if(encoderMotCle(intitule)){
+                        System.out.println("Mot clé ajouté");
+                    }
+                    System.out.println("Echec de l'ajout");
+
                     break;
                 case 4:
                     System.out.println("Voir les offres de stage non-validées");
@@ -136,9 +146,12 @@ public class GestionStage {
                 case 5:
                     System.out.println("Valider une offre de stage");
                     System.out.println("Entrez le code d'offre de stage: ");
-                    String code = scannerTest4.nextLine();
-                    validerOffreDeStage(code);
-                    System.out.println("Offre de stage validée");
+                    String code = input.nextLine();
+                    if(validerOffreDeStage(code)){
+                        System.out.println("Offre de stage validée");
+                    }else{
+                        System.out.println("Echec de l'opération");
+                    }
                     break;
                 case 6:
                     System.out.println("Voir les offres de stage validées");
@@ -174,9 +187,9 @@ public class GestionStage {
 
             return success;
         } catch (SQLException se) {
-            se.printStackTrace();
+            System.out.println(se.getMessage());
+            return false;
         }
-        return false;
     }
 
     public boolean encoderEntreprise(String nom, String adresse, String mail, String id_entreprise, String mdp) {
@@ -191,7 +204,8 @@ public class GestionStage {
 
             return success;
         } catch (SQLException se) {
-            se.printStackTrace();
+            System.out.println(se.getMessage());
+
             return false;
         }
     }
@@ -205,9 +219,9 @@ public class GestionStage {
 
             return success;
         } catch (SQLException se) {
-            se.printStackTrace();
-            return false;
+            System.out.println(se.getMessage());
         }
+        return false;
     }
 
     public void offreNonValidee(){
@@ -217,7 +231,7 @@ public class GestionStage {
                     System.out.println("Offre n°" + str);
                 }
         } catch (SQLException se) {
-            se.printStackTrace();
+            System.out.println(se.getMessage());
         }
     }
 
@@ -230,9 +244,10 @@ public class GestionStage {
 
             return success;
         } catch (SQLException se) {
-            se.printStackTrace();
-            return false;
+            System.out.println(se.getMessage());
+
         }
+        return false;
     }
 
     public void offreValidee(){
@@ -242,7 +257,7 @@ public class GestionStage {
                     System.out.println("Offre n°" + str);
                 }
         } catch (SQLException se) {
-            se.printStackTrace();
+            System.out.println(se.getMessage());
         }
     }
 
@@ -254,7 +269,7 @@ public class GestionStage {
 
                 }
         } catch (SQLException se) {
-            se.printStackTrace();
+            System.out.println(se.getMessage());
         }
     }
 
@@ -265,7 +280,7 @@ public class GestionStage {
                     System.out.println("Offre : " + str);
                 }
         } catch (SQLException se) {
-            se.printStackTrace();
+            System.out.println(se.getMessage());
         }
     }
 }
