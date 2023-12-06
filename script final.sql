@@ -114,7 +114,7 @@ CREATE OR REPLACE FUNCTION projet.encoderEntreprise(nom_entreprise VARCHAR(40), 
                                                     identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(100)) RETURNS VOID AS $$
 DECLARE
 BEGIN
-    INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mpd)
+    INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mdp)
     VALUES (identifiant_entreprise, nom_entreprise, adresse_entreprise, mail_entreprise, mdp_entreprise);
 END;
 $$ LANGUAGE plpgsql;
