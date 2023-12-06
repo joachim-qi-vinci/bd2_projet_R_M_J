@@ -37,7 +37,7 @@ CREATE TABLE projet.entreprises
         CHECK (adresse <> ''),
     mail VARCHAR(60) NOT NULL,
     CHECK ( mail SIMILAR TO '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z0-9]+'),
-    mpd VARCHAR(100) NOT NULL,
+    mdp VARCHAR(100) NOT NULL,
     CONSTRAINT entreprise_adresse_mail UNIQUE (nom, adresse, mail)
 );
 
@@ -114,7 +114,7 @@ CREATE OR REPLACE FUNCTION projet.encoderEntreprise(nom_entreprise VARCHAR(40), 
                                                     identifiant_entreprise CHAR(3), mdp_entreprise VARCHAR(100)) RETURNS VOID AS $$
 DECLARE
 BEGIN
-    INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mpd)
+    INSERT INTO projet.entreprises(id_entreprise, nom, adresse, mail, mdp)
     VALUES (identifiant_entreprise, nom_entreprise, adresse_entreprise, mail_entreprise, mdp_entreprise);
 END;
 $$ LANGUAGE plpgsql;
@@ -202,15 +202,6 @@ FROM
     projet.candidatures ca ON os.id_offre_stage = ca.offre_stage
         JOIN
     projet.etudiants e ON ca.etudiant = e.id_etudiant;
-
-WITH candidatures_en_attente AS (
-    SELECT os.id_offre_stage, COUNT(c.etudiant) AS nb_candidatures_attente
-    FROM projet.offres_stage os LEFT OUTER JOIN projet.candidatures c on os.id_offre_stage = c.offre_stage
-        AND c.offre_stage = os.id_offre_stage
-        AND c.etat = 'en attente'
-    GROUP BY os.id_offre_stage)
-
-SELECT * FROM projet.offres_stage os WHERE os.etat = 'attribuée';
 
 --APP ÉTUDIANT 1.
 
