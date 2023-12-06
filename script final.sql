@@ -594,15 +594,19 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
+ */
+
 
 
 --grant for joachim(entreprise)
+GRANT CONNECT ON DATABASE postgres TO joachim;
+GRANT USAGE ON SCHEMA projet TO joachim;
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO joachim;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
-*/
+
 
 --GRANT CONNECT & USAGE ON DATABASE & SCHEMA
 GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
@@ -618,4 +622,5 @@ GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_st
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO robinsalle;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO robinsalle;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.etudiants_id_etudiant_seq TO robinsalle;
+
 
