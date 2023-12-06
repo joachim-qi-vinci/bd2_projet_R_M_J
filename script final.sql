@@ -95,8 +95,8 @@ INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (3,1);
 INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (5,1);
 
 --INSERT INTO CANDIDATURES
-INSERT INTO projet.candidatures(etudiant, offre_stage, motivation, etat) VALUES (1, 4, 'jean adore leonard','acceptée');
-INSERT INTO projet.candidatures(etudiant, offre_stage, motivation, etat) VALUES (1, 3, 'Chinese Gang', 'en attente');
+INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 4, 'jean adore leonard');
+INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 3, 'Chinese Gang');
 
 
 --APP PROFESSEUR 1.
@@ -140,6 +140,9 @@ ORDER BY semestre_offre, e.id_entreprise;
 
 CREATE OR REPLACE FUNCTION projet.triggerUpdateOffre() RETURNS TRIGGER AS $$
 BEGIN
+    IF EXISTS(SELECT os.code_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = NEW.code_offre_stage)
+    THEN RAISE 'Cette offre n''existe pas';
+    END IF;
     -- Vérifier si l'offre de stage est à l'état "non validée"
     IF (NEW.etat = 'validée' AND OLD.etat != 'non-validée') THEN
         RAISE 'L''offre ne peut plus etre validée';
@@ -243,7 +246,7 @@ BEGIN
               FROM projet.candidatures ca
               WHERE ca.etudiant = NEW.etudiant
                 AND ca.etat = 'acceptée')
-    THEN RAISE 'cet étudiant a déjà une offre validée';
+    THEN RAISE 'cet étudiant a déjà une offre acceptée';
     END IF;
     IF NOT EXISTS (SELECT os.id_offre_stage
                    FROM projet.offres_stage os
@@ -262,7 +265,7 @@ BEGIN
     IF (etudiant_semestre!=offre_semestre)
     THEN RAISE 'les semestres ne correspondent pas';
     END IF;
-
+    RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
 
@@ -567,7 +570,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 
- --create user
+--create user
 --CREATE USER joachim WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 
