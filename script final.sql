@@ -140,7 +140,7 @@ ORDER BY semestre_offre, e.id_entreprise;
 
 CREATE OR REPLACE FUNCTION projet.triggerUpdateOffre() RETURNS TRIGGER AS $$
 BEGIN
-    IF EXISTS(SELECT os.code_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = NEW.code_offre_stage)
+    IF NOT EXISTS(SELECT os.code_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = NEW.code_offre_stage)
     THEN RAISE 'Cette offre n''existe pas';
     END IF;
     -- Vérifier si l'offre de stage est à l'état "non validée"
@@ -418,7 +418,7 @@ WITH candidatures_en_attente AS (
         AND c.offre_stage = os.id_offre_stage
         AND c.etat = 'en attente'
     GROUP BY os.id_offre_stage)
-SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,cea.nb_candidatures_attente ,COALESCE(e.nom,'non-attribuée') AS attribuée_a
+SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,cea.nb_candidatures_attente ,COALESCE(e.prenom || ' ' || e.nom,'non-attribuée') AS attribuée_a
 FROM   candidatures_en_attente cea, projet.offres_stage os
                                         LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
                                         LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
@@ -508,6 +508,9 @@ BEGIN
     WHERE c.offre_stage = offre_attribuee.id_offre_stage AND c.etudiant = etudiant_accepte.id_etudiant INTO candidature_acceptee;
 
     IF (offre_attribuee IS NULL) THEN RAISE 'Ce code ne correspond à aucune offre de stage';
+    END IF;
+
+    IF (candidature_acceptee IS NULL) THEN RAISE 'L''étudiant n''a pas de candidature pour cette offre de stage';
     END IF;
 
     IF(offre_attribuee.entreprise != entreprise_app) THEN RAISE 'L''offre n''est pas une offre de l''entreprise';
