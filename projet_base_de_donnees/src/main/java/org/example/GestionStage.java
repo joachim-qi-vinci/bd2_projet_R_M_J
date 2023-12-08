@@ -18,13 +18,6 @@ public class GestionStage {
      private PreparedStatement voirSansStagesStatement;
      private PreparedStatement voirStagesAttribuesStatement ;
 
-     /*
-     private static MonScanner scanner1 = new MonScanner("test.txt");
-     private static MonScanner scannerTest2 = new MonScanner("test2.txt");
-     private static MonScanner scannerTest3 = new MonScanner("test3.txt");
-     private static MonScanner scannerTest4 = new MonScanner("test4.txt");
-
-      */
      private Scanner input = new Scanner(System.in);
 
 

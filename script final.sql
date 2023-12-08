@@ -228,7 +228,7 @@ WHERE et.semestre_stage = os.semestre_offre
 GROUP BY et.id_etudiant, os.semestre_offre, os.code_offre_stage, os.entreprise, en.nom, en.adresse, os.description, mc.intitule;
 
 
-SELECT o.code_offre_stage,o.entreprise,o.semestre_offre,o.nom,o.adresse,o.description,o.mots_cles FROM projet.voirOffresParMotsCles o WHERE o.id_etudiant=2 AND o.intitule = 'Java';
+-- SELECT o.code_offre_stage,o.entreprise,o.semestre_offre,o.nom,o.adresse,o.description,o.mots_cles FROM projet.voirOffresParMotsCles o WHERE o.id_etudiant=2 AND o.intitule = 'Java';
 
 --APP ÉTUDIANT 3.
 --Poser sa candidature. Pour cela, il doit donner le code de l’offre de stage et donner ses
@@ -590,7 +590,7 @@ GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
  */
 
-
+/*
 
 --grant for joachim(entreprise)
 GRANT CONNECT ON DATABASE postgres TO joachim;
@@ -600,7 +600,7 @@ GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
-
+*/
 
 --GRANT CONNECT & USAGE ON DATABASE & SCHEMA
 GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
