@@ -140,9 +140,6 @@ ORDER BY semestre_offre, e.id_entreprise;
 
 CREATE OR REPLACE FUNCTION projet.triggerUpdateOffre() RETURNS TRIGGER AS $$
 BEGIN
-    IF NOT EXISTS(SELECT os.code_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = NEW.code_offre_stage)
-    THEN RAISE 'Cette offre n''existe pas';
-    END IF;
     -- Vérifier si l'offre de stage est à l'état "non validée"
     IF (NEW.etat = 'validée' AND OLD.etat != 'non-validée') THEN
         RAISE 'L''offre ne peut plus etre validée';
@@ -159,21 +156,30 @@ BEGIN
     IF (OLD.etat = 'attribuée') THEN
         RAISE 'Cette offre est déjà attribuée';
     END IF;
+
     RETURN NEW;
 END;
+
 $$ LANGUAGE plpgsql;
+
 
 CREATE TRIGGER trigger_valider_offre_stage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerUpdateOffre();
 
+
+
 CREATE OR REPLACE FUNCTION projet.validerOffreDeStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
 DECLARE
+    --id_offre INTEGER;
 BEGIN
-
+    IF NOT EXISTS ((SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre)) THEN
+        RAISE 'L''offre n''existe pas';
+    END IF;
     UPDATE projet.offres_stage  SET etat='validée' WHERE code_offre_stage = code_offre;
 END;
-$$ LANGUAGE plpgsql;
 
+$$ LANGUAGE plpgsql;
+--SELECT projet.validerOffreDeStage('VIN23');
 
 --APP PROFESSEUR 6.
 
@@ -556,6 +562,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
 
@@ -581,9 +588,9 @@ $$ LANGUAGE plpgsql;
 -- CREATE USER
 --CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
-/*
-GRANT CONNECT ON DATABASE dbjoachimqi TO mariomargjini, robinsalle;
-GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
+
+GRANT CONNECT ON DATABASE postgres TO joachime;
+GRANT USAGE ON SCHEMA projet TO joachime;
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.offreNonValidee, projet.offresValidees, projet.etudiantsSansStage, projet.offresStagesAttribuees TO joachime;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage, projet.entreprises, projet.mots_cles TO joachime;
@@ -591,7 +598,6 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
- */
 
 
 
@@ -604,7 +610,7 @@ GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
 
-
+/*
 --GRANT CONNECT & USAGE ON DATABASE & SCHEMA
 GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
 GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
@@ -621,3 +627,4 @@ GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO robinsalle;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.etudiants_id_etudiant_seq TO robinsalle;
 
 
+*/
