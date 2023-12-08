@@ -69,34 +69,6 @@ CREATE TABLE projet.mots_cles_offre_stage
     PRIMARY KEY (offre_stage, mot_cle)
 );
 
---INSERT INTO ETUDIANTS
-INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('De', 'Jean', 'j.d@student.vinci.be', 'Q2', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
-INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Du', 'Marc', 'm.d@student.vinci.be', 'Q1', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
-
---INSERT INTO MOTS-CLES
-INSERT INTO projet.mots_cles(intitule) VALUES ('Java');
-INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
-INSERT INTO projet.mots_cles(intitule) VALUES ('Python');
-
---INSERT INTO ENTREPRISES
-INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
-INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
-
---INSERT INTO OFFRE_STAGE
-INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN1', 'stage SAP', 'Q2','validée');
-INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('VIN', 'VIN2', 'stage BI', 'Q2');
-INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('VIN', 'VIN3', 'stage Unity','Q2');
-INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN','VIN4','stage IA','Q2', 'validée');
-INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN5', 'stage mobile', 'Q1', 'validée');
-INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('ULB', 'ULB1', 'stage javascript', 'Q1','validée');
-
---INSERT INTO MOTS-CLES-OFFRES-STAGES
-INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (3,1);
-INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (5,1);
-
---INSERT INTO CANDIDATURES
-INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 4, 'jean adore leonard');
-INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 3, 'Chinese Gang');
 
 
 --APP PROFESSEUR 1.
@@ -140,9 +112,6 @@ ORDER BY semestre_offre, e.id_entreprise;
 
 CREATE OR REPLACE FUNCTION projet.triggerUpdateOffre() RETURNS TRIGGER AS $$
 BEGIN
-    IF EXISTS(SELECT os.code_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = NEW.code_offre_stage)
-    THEN RAISE 'Cette offre n''existe pas';
-    END IF;
     -- Vérifier si l'offre de stage est à l'état "non validée"
     IF (NEW.etat = 'validée' AND OLD.etat != 'non-validée') THEN
         RAISE 'L''offre ne peut plus etre validée';
@@ -159,21 +128,30 @@ BEGIN
     IF (OLD.etat = 'attribuée') THEN
         RAISE 'Cette offre est déjà attribuée';
     END IF;
+
     RETURN NEW;
 END;
+
 $$ LANGUAGE plpgsql;
+
 
 CREATE TRIGGER trigger_valider_offre_stage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerUpdateOffre();
 
+
+
 CREATE OR REPLACE FUNCTION projet.validerOffreDeStage(code_offre VARCHAR(5)) RETURNS VOID AS $$
 DECLARE
+    --id_offre INTEGER;
 BEGIN
-
+    IF NOT EXISTS ((SELECT os.id_offre_stage FROM projet.offres_stage os WHERE os.code_offre_stage = code_offre)) THEN
+        RAISE 'L''offre n''existe pas';
+    END IF;
     UPDATE projet.offres_stage  SET etat='validée' WHERE code_offre_stage = code_offre;
 END;
-$$ LANGUAGE plpgsql;
 
+$$ LANGUAGE plpgsql;
+--SELECT projet.validerOffreDeStage('VIN23');
 
 --APP PROFESSEUR 6.
 
@@ -193,8 +171,9 @@ WHERE et.id_etudiant NOT IN (SELECT c.etudiant
                              WHERE et.id_etudiant = c.etudiant AND c.etat = 'acceptée');
 
 --APP PROFESSEUR 8.
+
 CREATE VIEW projet.offresStagesAttribuees AS
-SELECT
+SELECT DISTINCT
     os.code_offre_stage,
     os.entreprise,
     e.nom AS nom_etudiant,
@@ -204,7 +183,8 @@ FROM
         JOIN
     projet.candidatures ca ON os.id_offre_stage = ca.offre_stage
         JOIN
-    projet.etudiants e ON ca.etudiant = e.id_etudiant;
+    projet.etudiants e ON ca.etudiant = e.id_etudiant
+WHERE os.etat = 'attribuée';
 
 --APP ÉTUDIANT 1.
 
@@ -265,6 +245,7 @@ BEGIN
     IF (etudiant_semestre!=offre_semestre)
     THEN RAISE 'les semestres ne correspondent pas';
     END IF;
+
     RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
@@ -287,7 +268,8 @@ BEGIN
 END ;
 $$ LANGUAGE plpgsql;
 
---SELECT projet.poserCandidature(1, 'ULB4', 'coucou c est greg');
+
+
 -- APP ETUDIANT 4.
 
 CREATE VIEW projet.mesCandidatures AS
@@ -302,10 +284,13 @@ WHERE os.entreprise = en.id_entreprise AND ca.offre_stage = os.id_offre_stage;
 --peuvent être annulées que si elles sont « en attente »
 
 CREATE OR REPLACE FUNCTION projet.triggerAnnulerCandidature() RETURNS TRIGGER AS $$
+DECLARE
+
 BEGIN
     IF (OLD.etat !='en attente')
     THEN RAISE 'la candidature doit être en attente pourpouvoir être annulée';
     END IF;
+
     RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
@@ -313,11 +298,41 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trigger_annuler_candidature BEFORE UPDATE ON projet.candidatures
     FOR EACH ROW EXECUTE PROCEDURE projet.triggerAnnulerCandidature();
 
-CREATE OR REPLACE FUNCTION projet.annulerCandidature(etudiantP INTEGER,offreP INTEGER) RETURNS void AS $$
+CREATE OR REPLACE FUNCTION projet.annulerCandidature(etudiantP INTEGER,offreP VARCHAR(6)) RETURNS void AS $$
+DECLARE
+    id_offre INTEGER;
 BEGIN
-    UPDATE projet.candidatures ca SET etat='annulée' WHERE ca.etudiant = etudiantP AND ca.offre_stage=offreP;
+    SELECT o.id_offre_stage
+    FROM projet.offres_stage o
+    WHERE o.code_offre_stage=offreP
+    INTO id_offre;
+
+    UPDATE projet.candidatures ca SET etat='annulée' WHERE ca.etudiant = etudiantP AND ca.offre_stage=id_offre;
 END
 $$ LANGUAGE plpgsql;
+
+
+CREATE OR REPLACE FUNCTION projet.triggerNbrCandidatures() RETURNS TRIGGER AS $$
+    DECLARE
+        nombre INTEGER;
+    BEGIN
+        SELECT count(DISTINCT c.*)
+        FROM projet.candidatures c
+        WHERE c.etudiant = NEW.etudiant
+        AND c.etat='en attente'
+        INTO nombre;
+
+        UPDATE projet.etudiants et SET nbr_candidatures_en_attente = nombre WHERE et.id_etudiant = NEW.etudiant;
+        RETURN NEW;
+    END
+    $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_candidature AFTER UPDATE ON projet.candidatures
+    FOR EACH ROW EXECUTE PROCEDURE projet.triggerNbrCandidatures();
+
+CREATE TRIGGER trigger_ajouter_candidature AFTER INSERT ON projet.candidatures
+    FOR EACH ROW EXECUTE PROCEDURE projet.triggerNbrCandidatures();
+
 
 --APP ENTREPRISE 1.
 
@@ -418,7 +433,7 @@ WITH candidatures_en_attente AS (
         AND c.offre_stage = os.id_offre_stage
         AND c.etat = 'en attente'
     GROUP BY os.id_offre_stage)
-SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,cea.nb_candidatures_attente ,COALESCE(e.nom,'non-attribuée') AS attribuée_a
+SELECT os.entreprise, os.code_offre_stage, os.description, os.semestre_offre, os.etat,cea.nb_candidatures_attente ,COALESCE(e.prenom || ' ' || e.nom,'non-attribuée') AS attribuée_a
 FROM   candidatures_en_attente cea, projet.offres_stage os
                                         LEFT OUTER JOIN projet.candidatures ca ON os.id_offre_stage = ca.offre_stage AND ca.etat = 'acceptée'
                                         LEFT OUTER JOIN projet.etudiants e ON ca.etudiant = e.id_etudiant
@@ -510,6 +525,9 @@ BEGIN
     IF (offre_attribuee IS NULL) THEN RAISE 'Ce code ne correspond à aucune offre de stage';
     END IF;
 
+    IF (candidature_acceptee IS NULL) THEN RAISE 'L''étudiant n''a pas de candidature pour cette offre de stage';
+    END IF;
+
     IF(offre_attribuee.entreprise != entreprise_app) THEN RAISE 'L''offre n''est pas une offre de l''entreprise';
     END IF;
 
@@ -553,6 +571,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
 CREATE TRIGGER trigger_verifierOffreDeStage BEFORE UPDATE ON projet.offres_stage
     FOR EACH ROW EXECUTE PROCEDURE projet.annulerOffreDeStage();
 
@@ -579,8 +598,8 @@ $$ LANGUAGE plpgsql;
 --CREATE USER joachime WITH PASSWORD '1234';
 --CREATE USER etudiant WITH PASSWORD '4321';
 /*
-GRANT CONNECT ON DATABASE dbjoachimqi TO mariomargjini, robinsalle;
-GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
+GRANT CONNECT ON DATABASE postgres TO joachime;
+GRANT USAGE ON SCHEMA projet TO joachime;
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.offreNonValidee, projet.offresValidees, projet.etudiantsSansStage, projet.offresStagesAttribuees TO joachime;
 GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachime;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage, projet.entreprises, projet.mots_cles TO joachime;
@@ -588,10 +607,40 @@ GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachime;
 GRANT INSERT ON TABLE projet.etudiants TO joachime;
 
- */
+*/
+
+
+--INSERT INTO ETUDIANTS
+INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('De', 'Jean', 'j.d@student.vinci.be', 'Q2', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+INSERT INTO projet.etudiants(nom, prenom, mail, semestre_stage, mdp) VALUES ('Du', 'Marc', 'm.d@student.vinci.be', 'Q1', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+
+--INSERT INTO MOTS-CLES
+INSERT INTO projet.mots_cles(intitule) VALUES ('Java');
+INSERT INTO projet.mots_cles(intitule) VALUES ('Web');
+INSERT INTO projet.mots_cles(intitule) VALUES ('Python');
+
+
+--INSERT INTO ENTREPRISES
+INSERT INTO projet.entreprises VALUES ('VIN','Vinci', 'rue Leonard De Vinci', 'vinci@vinci.be', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+INSERT INTO projet.entreprises VALUES ('ULB', 'ULB', 'rue université libre', 'ulb@ulb.com', '$2a$10$L9iqDEW6HAFBKCyCxngue.sIFy.oFybUfYeOIyVhrxZtI/F9OyD7C');
+
+--INSERT INTO OFFRE_STAGE
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN1', 'stage SAP', 'Q2','validée');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('VIN', 'VIN2', 'stage BI', 'Q2');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre) VALUES ('VIN', 'VIN3', 'stage Unity','Q2');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN','VIN4','stage IA','Q2', 'validée');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('VIN', 'VIN5', 'stage mobile', 'Q1', 'validée');
+INSERT INTO projet.offres_stage(entreprise, code_offre_stage, description, semestre_offre, etat) VALUES ('ULB', 'ULB1', 'stage javascript', 'Q1','validée');
+
+--INSERT INTO MOTS-CLES-OFFRES-STAGES
+INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (3,1);
+INSERT INTO projet.mots_cles_offre_stage(offre_stage, mot_cle) VALUES (5,1);
+
+--INSERT INTO CANDIDATURES
+INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (1, 4, 'jean adore leonard');
+INSERT INTO projet.candidatures(etudiant, offre_stage, motivation) VALUES (2, 5, 'Chinese Gang');
 
 /*
-
 --grant for joachim(entreprise)
 GRANT CONNECT ON DATABASE postgres TO joachim;
 GRANT USAGE ON SCHEMA projet TO joachim;
@@ -600,7 +649,14 @@ GRANT UPDATE ON projet.offres_stage, projet.candidatures TO joachim;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq TO joachim;
 GRANT SELECT, UPDATE ON SEQUENCE projet.etudiants_id_etudiant_seq TO joachim;
+<<<<<<< HEAD
 */
+
+
+
+
+
+
 
 --GRANT CONNECT & USAGE ON DATABASE & SCHEMA
 GRANT CONNECT ON DATABASE postgres TO mariomargjini, robinsalle;
@@ -608,13 +664,12 @@ GRANT USAGE ON SCHEMA projet TO mariomargjini, robinsalle;
 
 --GRANT ETUDIANT (MARIO)
 GRANT SELECT ON projet.etudiants, projet.entreprises, projet.offres_stage, projet.mots_cles_offre_stage, projet.mots_cles, projet.candidatures, projet.voirOffresValideesSemestre, projet.voirOffresParMotsCles, projet.mesCandidatures TO mariomargjini;
-GRANT UPDATE ON projet.candidatures TO mariomargjini;
+GRANT UPDATE ON projet.candidatures, projet.etudiants TO mariomargjini;
 GRANT INSERT ON projet.candidatures TO mariomargjini;
 
 --GRANT ENTREPRISE (ROBIN)
 GRANT SELECT ON projet.offres_stage, projet.mots_cles, projet.mots_cles_offre_stage, projet.candidatures, projet.etudiants, projet.entreprises, projet.voirMotsCles, projet.mesOffres TO robinsalle;
-GRANT UPDATE ON projet.offres_stage, projet.candidatures TO robinsalle;
+GRANT UPDATE ON projet.offres_stage, projet.candidatures, projet.etudiants TO robinsalle;
 GRANT INSERT ON projet.offres_stage, projet.mots_cles_offre_stage TO robinsalle;
 GRANT SELECT, UPDATE ON SEQUENCE projet.offres_stage_id_offre_stage_seq, projet.etudiants_id_etudiant_seq TO robinsalle;
-
 

@@ -127,9 +127,9 @@ public class GestionStage {
                     //String intitule = scanner1.nextLine();
                     if(encoderMotCle(intitule)){
                         System.out.println("Mot clé ajouté");
+                    }else {
+                        System.out.println("Echec de l'ajout");
                     }
-                    System.out.println("Echec de l'ajout");
-
                     break;
                 case 4:
                     System.out.println("Voir les offres de stage non-validées");
@@ -176,9 +176,8 @@ public class GestionStage {
             encoderEtudiantStatement.setObject(4, semestre_stage, java.sql.Types.OTHER);
 
             encoderEtudiantStatement.setString(5, mdp);
-            boolean success = encoderEtudiantStatement.execute();
 
-            return success;
+            return encoderEtudiantStatement.execute();
         } catch (SQLException se) {
             System.out.println(se.getMessage());
             return false;
@@ -193,9 +192,7 @@ public class GestionStage {
             encoderEntrepriseStatement.setString(4, id_entreprise);
             encoderEntrepriseStatement.setString(5, mdp);
 
-            boolean success = encoderEntrepriseStatement.execute();
-
-            return success;
+            return encoderEntrepriseStatement.execute();
         } catch (SQLException se) {
             System.out.println(se.getMessage());
 
@@ -208,9 +205,7 @@ public class GestionStage {
 
             encoderMotCleStatement.setString(1, intituleParam);
 
-            boolean success = encoderMotCleStatement.execute();
-
-            return success;
+            return encoderMotCleStatement.execute();
         } catch (SQLException se) {
             System.out.println(se.getMessage());
         }
@@ -230,15 +225,10 @@ public class GestionStage {
 
     public boolean validerOffreDeStage(String code_offre){
         try {
-
             validerOffreDeStageStatement.setString(1, code_offre);
-
-            boolean success = validerOffreDeStageStatement.execute();
-
-            return success;
+            return validerOffreDeStageStatement.execute();
         } catch (SQLException se) {
             System.out.println(se.getMessage());
-
         }
         return false;
     }
